@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import yaml
+from rich.text import Text
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical
@@ -231,9 +232,9 @@ class RunAttackContent(Vertical):
             yield Static("MODEL: —", id="run-cfg-model")
             yield Static("CONCURRENCY: —", id="run-cfg-concurrency")
         with Horizontal(id="run-buttons"):
-            yield Button(" [ RUN_BATTERY ] ", id="run-start", variant="primary")
-            yield Button(" [ DRY_RUN ] ", id="run-dry", variant="default")
-            yield Button(" [ HALT ] ", id="run-halt")
+            yield Button(Text(" [ RUN_BATTERY ] "), id="run-start", variant="primary")
+            yield Button(Text(" [ DRY_RUN ] "), id="run-dry", variant="default")
+            yield Button(Text(" [ HALT ] "), id="run-halt")
         yield Static(id="run-progress-text", classes="status-text")
         yield ProgressBar(id="run-progress", total=100, show_percentage=False, show_eta=False)
         yield Static(id="run-elapsed")
