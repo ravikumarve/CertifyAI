@@ -66,6 +66,7 @@ def _category_option(value: str | None) -> list[AttackCategory] | None:
 @click.option("-k", "--api-key", envvar="CERTIFYAI_API_KEY", help="API key (or set CERTIFYAI_API_KEY).")
 @click.option("-e", "--endpoint", help="Custom API endpoint (for Ollama / OpenAI-compatible).")
 @click.option("--category", help="Attack categories to run (comma-separated), or 'all'.")
+@click.option("--plugin-dir", multiple=True, help="Directory with custom attack plugins (can be specified multiple times).", type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.option("--vault", default="./certifyai_vault", help="Path to evidence vault directory.", show_default=True)
 @click.option("--report", help="Output compliance report to file (JSON).")
 @click.option("--framework", default="eu_ai_act", help="Compliance framework for reporting.")
@@ -76,6 +77,7 @@ def run(
     api_key: str | None,
     endpoint: str | None,
     category: str | None,
+    plugin_dir: tuple[str, ...],
     vault: str,
     report: str | None,
     framework: str,
@@ -96,14 +98,22 @@ def run(
         dry_run=dry_run,
     )
 
+    # Build registry with optional external plugin directories
+    from certifyai.engine.registry import PluginRegistry
+
+    plugin_dirs_list = [Path(d) for d in plugin_dir] if plugin_dir else []
+    registry = PluginRegistry(plugin_dirs=plugin_dirs_list)
+
     console.print("[bold cyan]CertifyAI[/] — Running attack battery")
     console.print(f"  Provider: {provider} | Model: {model}")
     console.print(f"  Vault:    {vault}")
     if category:
         console.print(f"  Categories: {category}")
+    if plugin_dirs_list:
+        console.print(f"  Custom plugins: {', '.join(str(d) for d in plugin_dirs_list)}")
     console.print()
 
-    runner = AttackRunner(config)
+    runner = AttackRunner(config, registry=registry)
     summary, results = asyncio.run(runner.run_all())
 
     # Store results in evidence vault
@@ -162,6 +172,24 @@ def verify(path: str) -> None:
         console.print(f"  Run {run_id}: {status} ({run_result.get('total_files', 0)} files)")
         for mismatch in run_result.get("mismatches", []):
             console.print(f"    [red]! {mismatch}[/]")
+
+
+@cli.command(name="list-categories")
+@click.option("--plugin-dir", multiple=True, help="Directory with custom attack plugins.", type=click.Path(exists=True, file_okay=False, dir_okay=True))
+def list_categories(plugin_dir: tuple[str, ...]) -> None:
+    """List all available attack categories and their scenario counts."""
+    from certifyai.engine.registry import PluginRegistry
+
+    plugin_dirs_list = [Path(d) for d in plugin_dir] if plugin_dir else []
+    registry = PluginRegistry(plugin_dirs=plugin_dirs_list)
+
+    console.print("[bold cyan]Available Attack Categories[/]\n")
+    for cat in registry.list_categories():
+        scenarios = registry.get_scenarios_by_category([cat])
+        console.print(f"  [bold]{cat.value}[/] — {len(scenarios)} scenario(s)")
+        for s in scenarios:
+            console.print(f"    └ {s.id}: {s.name} [{s.severity.value}]")
+    console.print()
 
 
 @cli.command()
