@@ -181,7 +181,7 @@ class DashboardContent(Vertical):
         if vault_dir.exists():
             vault = EvidenceVault(vault_dir)
             v_result = vault.verify_all()
-            integrity = "✅ Verified" if v_result["verified"] else "❌ Tampered"
+            integrity = "VERIFIED" if v_result["verified"] else "TAMPERED"
         else:
             integrity = "Not found"
         self.query_one("#dash-vault", Static).update(
@@ -197,15 +197,15 @@ class DashboardContent(Vertical):
         for r in runs:
             score = f"{r.overall_score:.0%}" if r.overall_score is not None else "-"
             status_icon = {
-                "completed": "✅",
-                "failed": "❌",
-                "running": "🔄",
-                "pending": "⏳",
-            }.get(r.status, "❓")
+                "completed": "PASS",
+                "failed": "FAIL",
+                "running": "RUN",
+                "pending": "--",
+            }.get(r.status, "??")
             table.add_row(
                 r.id[:8],
                 r.started_at[:19],
-                f"{status_icon} {r.status}",
+                status_icon,
                 score,
                 str(r.total_attacks),
                 str(r.passed),
@@ -227,12 +227,14 @@ class RunAttackContent(Vertical):
     def compose(self) -> ComposeResult:
         yield Static("Attack Run", classes="section-title")
         with Container(id="run-config-summary"):
-            yield Static("Provider: —", id="run-cfg-provider")
-            yield Static("Model: —", id="run-cfg-model")
-            yield Static("Frameworks: —", id="run-cfg-frameworks")
+            yield Static("PROVIDER: —", id="run-cfg-provider")
+            yield Static("MODEL: —", id="run-cfg-model")
+            yield Static("CONCURRENCY: —", id="run-cfg-concurrency")
         with Horizontal(id="run-buttons"):
-            yield Button("Start Attack", id="run-start", variant="primary")
-            yield Button("Dry Run", id="run-dry", variant="default")
+            yield Button(" RUN_BATTERY ", id="run-start", variant="primary")
+            yield Button(" DRY_RUN ", id="run-dry", variant="default")
+            yield Button(" HALT ", id="run-halt")
+        yield Static(id="run-progress-text", classes="status-text")
         yield ProgressBar(id="run-progress", total=100, show_eta=True)
         yield Static(id="run-elapsed")
         yield Static(id="run-current")
@@ -252,14 +254,13 @@ class RunAttackContent(Vertical):
         cfg = load_config()
         prov = cfg.get("provider", {})
         self.query_one("#run-cfg-provider", Static).update(
-            f"Provider: [bold]{prov.get('name', '—')}[/bold]"
+            f"PROVIDER: [bold]{prov.get('name', '—').upper()}[/bold]"
         )
         self.query_one("#run-cfg-model", Static).update(
-            f"Model: [bold]{prov.get('model', '—')}[/bold]"
+            f"MODEL: [bold]{prov.get('model', '—').upper()}[/bold]"
         )
-        frameworks = cfg.get("frameworks", [])
-        self.query_one("#run-cfg-frameworks", Static).update(
-            f"Frameworks: [bold]{', '.join(frameworks)}[/bold]"
+        self.query_one("#run-cfg-concurrency", Static).update(
+            "CONCURRENCY: [bold]3 THREADS[/bold]"
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -267,6 +268,13 @@ class RunAttackContent(Vertical):
             self._start_run(dry_run=False)
         elif event.button.id == "run-dry":
             self._start_run(dry_run=True)
+        elif event.button.id == "run-halt":
+            if self.running:
+                self.app.notify("Halt requested — cancelling attack", severity="warning")
+                self.running = False
+                self.query_one("#run-current", Static).update("HALTED")
+            else:
+                self.app.notify("No attack running", severity="information")
 
     def _start_run(self, dry_run: bool) -> None:
         if self.running:
@@ -279,6 +287,7 @@ class RunAttackContent(Vertical):
         self.query_one("#run-summary", Static).update("")
         self.query_one("#run-error", Static).update("")
         self.query_one("#run-progress", ProgressBar).update(progress=0)
+        self.query_one("#run-progress-text", Static).update("0% — 0/0 COMPLETE")
         self.query_one("#run-elapsed", Static).update("Elapsed: 00:00")
         self.query_one("#run-current", Static).update("Starting…")
         self.run_attack_worker(dry_run)
@@ -357,8 +366,18 @@ class RunAttackContent(Vertical):
 
         while self._progress_updates:
             name, status = self._progress_updates.pop(0)
-            table.add_row(name, status.upper(), "", "")
+            status_display = {"pass": "PASS", "fail": "FAIL", "error": "ERROR"}.get(status, status.upper())
+            table.add_row(name, status_display, "", "")
             self.query_one("#run-current", Static).update(f"Current: {name}")
+
+        # Update progress text
+        row_count = len(table.rows)
+        total = row_count + len(self._progress_updates)
+        pct = int((row_count / max(total, 1)) * 100)
+        self.query_one("#run-progress", ProgressBar).update(progress=pct)
+        self.query_one("#run-progress-text", Static).update(
+            f"{pct}% — {row_count}/{total} COMPLETE"
+        )
 
     def _update_elapsed(self) -> None:
         if not self.running:
@@ -394,14 +413,14 @@ class RunAttackContent(Vertical):
         table.clear()
         table.add_columns("Scenario", "Status", "Severity", "Time (ms)")
         for r in results:
-            sev_icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🟢"}.get(
-                r.severity.value, "⚪"
+            sev_icon = {"critical": "CRT", "high": "HIGH", "medium": "MED", "low": "LOW"}.get(
+                r.severity.value, "---"
             )
-            status_icon = "✅" if r.status == AttackStatus.PASS else "❌"
+            status_text = "PASS" if r.status == AttackStatus.PASS else "FAIL"
             table.add_row(
                 r.scenario_id,
-                f"{status_icon} {r.status.value.upper()}",
-                f"{sev_icon} {r.severity.value}",
+                status_text,
+                sev_icon,
                 str(r.response_time_ms or ""),
                 key=r.id,
             )
@@ -409,6 +428,8 @@ class RunAttackContent(Vertical):
         # Update progress bar
         pb = self.query_one("#run-progress", ProgressBar)
         pb.update(progress=100)
+        pct_text = self.query_one("#run-progress-text", Static)
+        pct_text.update(f"100% — {total}/{total} COMPLETE")
 
     def _get_app(self) -> CertifyAIApp:
         return self.app  # type: ignore[return-value]
@@ -457,15 +478,15 @@ class ResultsContent(Vertical):
             for r in runs:
                 score = f"{r.overall_score:.0%}" if r.overall_score is not None else "-"
                 status_icon = {
-                    "completed": "✅",
-                    "failed": "❌",
-                    "running": "🔄",
-                    "pending": "⏳",
-                }.get(r.status, "❓")
+                    "completed": "PASS",
+                    "failed": "FAIL",
+                    "running": "RUN",
+                    "pending": "--",
+                }.get(r.status, "??")
                 table.add_row(
                     r.id[:12],
                     r.started_at[:19],
-                    f"{status_icon} {r.status}",
+                    status_icon,
                     score,
                     str(r.total_attacks),
                     str(r.passed),
@@ -502,12 +523,12 @@ class ResultsContent(Vertical):
                 )
 
             for r in results:
-                status_icon = "✅" if r.status == "pass" else "❌"
+                status_text = "PASS" if r.status == "pass" else "FAIL"
                 detail_table.add_row(
                     r.scenario_id,
                     r.attack_name,
                     r.category,
-                    f"{status_icon} {r.status.upper()}",
+                    status_text,
                     r.severity,
                     str(r.response_time_ms or ""),
                 )
@@ -620,7 +641,7 @@ class SettingsContent(Vertical):
         try:
             save_config(cfg)
             self.query_one("#cfg-status", Static).update(
-                "[green]✅ Configuration saved to certifyai.yaml[/green]"
+                "[green]Configuration saved to certifyai.yaml[/green]"
             )
             self.app.notify("Configuration saved", severity="information")
         except Exception as exc:
@@ -643,6 +664,7 @@ class CertifyAIApp(App):
 
     Screen {
         background: #000000;
+        border: solid #090909;
     }
 
     /* Override Textual theme variables */
@@ -711,14 +733,16 @@ class CertifyAIApp(App):
 
     #run-config-summary {
         layout: horizontal;
-        height: auto;
-        padding: 1;
+        height: 3;
         background: #121212;
         border: solid #222222;
     }
 
     #run-config-summary > Static {
         width: 1fr;
+        padding: 1;
+        color: #888888;
+        text-style: bold;
     }
 
     #run-buttons {
@@ -727,8 +751,21 @@ class CertifyAIApp(App):
     }
 
     #run-buttons Button {
-        width: 16;
+        width: 18;
         margin: 0 1 0 0;
+    }
+
+    #run-halt {
+        background: #090909;
+        color: #FF0055;
+        border: solid #FF0055;
+        text-style: bold;
+        margin-left: auto;
+    }
+
+    #run-halt:hover {
+        background: #FF0055;
+        color: #000000;
     }
 
     Button {
@@ -767,6 +804,7 @@ class CertifyAIApp(App):
 
     ProgressBar {
         height: 1;
+        margin: 1 0;
     }
 
     ProgressBar > .bar {
