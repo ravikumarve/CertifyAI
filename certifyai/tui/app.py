@@ -284,7 +284,7 @@ class RunAttackContent(Vertical):
         self.running = True
         self._progress_updates.clear()
         self._start_time = time.monotonic()
-        self.query_one("#run-scenario-table", DataTable).clear()
+        self.query_one("#run-scenario-table", DataTable).clear(columns=True)
         self.query_one("#run-summary", Static).update("")
         self.query_one("#run-error", Static).update("")
         self.query_one("#run-progress", ProgressBar).update(progress=0)
@@ -411,7 +411,7 @@ class RunAttackContent(Vertical):
 
         # Update scenario table with full results
         table = self.query_one("#run-scenario-table", DataTable)
-        table.clear()
+        table.clear(columns=True)
         table.add_columns("Scenario", "Status", "Severity", "Time (ms)")
         for r in results:
             sev_icon = {"critical": "CRT", "high": "HIGH", "medium": "MED", "low": "LOW"}.get(
@@ -752,7 +752,7 @@ class CertifyAIApp(App):
     }
 
     #run-buttons Button {
-        width: 18;
+        width: 22;
         margin: 0 1 0 0;
     }
 
