@@ -658,10 +658,6 @@ class CertifyAIApp(App):
 
     /* ── Typography ── */
 
-    * {
-        font-family: "JetBrains Mono", monospace;
-    }
-
     .section-title {
         text-style: bold;
         padding: 1 0 0 1;
