@@ -24,13 +24,20 @@ class AttackRunner:
 
     Uses the plugin system for scenario definitions and evaluation,
     and the LLM client for sending prompts.
+
+    If a ``db_manager`` is provided, results are persisted to SQLite
+    automatically after execution.
     """
 
     def __init__(
-        self, config: RunConfig, registry: PluginRegistry | None = None
+        self,
+        config: RunConfig,
+        registry: PluginRegistry | None = None,
+        db_manager: Any = None,
     ) -> None:
         self.config = config
         self.registry = registry or PluginRegistry()
+        self.db_manager = db_manager
 
         self.registry.load_all()
         self.llm = self._build_llm_client()
@@ -120,4 +127,66 @@ class AttackRunner:
                 round(summary.passed / non_error, 4) if non_error > 0 else 0.0
             )
 
+        # Persist to database if configured
+        if self.db_manager is not None:
+            await self._persist_results(summary, results, scenarios)
+
         return summary, results
+
+    async def _persist_results(
+        self,
+        summary: RunSummary,
+        results: list[AttackResult],
+        scenarios: list[Any],
+    ) -> None:
+        """Save run and results to the SQLite database."""
+        from datetime import UTC, datetime
+        from certifyai.engine.database.models import ResultRecord, RunRecord, APP_VERSION
+
+        # Build scenario lookup: id -> name
+        scenario_names = {s.id: s.name for s in scenarios}
+
+        # Create run record
+        run_record = RunRecord(
+            id=summary.id,
+            status=summary.status.value,
+            started_at=summary.started_at,
+            finished_at=summary.completed_at or datetime.now(UTC).isoformat(),
+            config_json=summary.config_snapshot,
+            total_attacks=summary.total_attacks,
+            passed=summary.passed,
+            failed=summary.failed,
+            errors=summary.errors,
+            overall_score=summary.overall_score,
+            engine_version=APP_VERSION,
+        )
+        await self.db_manager.save_run(run_record)
+
+        # Create result records
+        result_records = []
+        for r in results:
+            result_records.append(
+                ResultRecord(
+                    id=r.id,
+                    run_id=r.run_id or summary.id,
+                    scenario_id=r.scenario_id,
+                    attack_name=scenario_names.get(r.scenario_id, r.scenario_id),
+                    category=r.category.value,
+                    status=r.status.value,
+                    severity=r.severity.value,
+                    prompt_text=r.prompt,
+                    response_text=r.response,
+                    evaluation=r.evaluation,
+                    response_time_ms=r.response_time_ms,
+                    evidence_hash=r.evidence_hash,
+                    clause_refs=str(r.clause_refs) if r.clause_refs else None,
+                    error_message=r.error_message,
+                )
+            )
+        await self.db_manager.save_results(result_records)
+
+        logger.info(
+            "Persisted run %s with %d results to database",
+            summary.id,
+            len(result_records),
+        )

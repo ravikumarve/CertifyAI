@@ -10,6 +10,9 @@ import click
 from rich.console import Console
 from rich.logging import RichHandler
 
+from certifyai.engine.database.manager import DatabaseManager
+from certifyai.engine.database.models import EvidenceChainRecord
+from certifyai.engine.evidence.hasher import hash_chain_link
 from certifyai.engine.models import AttackCategory, ProviderConfig, RunConfig
 from certifyai.engine.runner import AttackRunner
 
@@ -44,6 +47,39 @@ def cli(verbose: int) -> None:
     )
 
 
+async def _add_evidence_chain(
+    db_mgr: DatabaseManager, run_id: str, vault: Any
+) -> None:
+    """Compute and persist an evidence chain entry for the run."""
+    from datetime import UTC, datetime
+
+    # Get previous chain entry for linking
+    prev_entry = await db_mgr.get_latest_chain_entry()
+    previous_hash = prev_entry.run_hash if prev_entry else "0" * 64
+
+    # Compute run hash from vault evidence files
+    run_verification = vault.verify_run(run_id)
+    hashes_in_run = []
+    run_dir = vault.vault_path / f"run_{run_id}"
+    if run_dir.exists():
+        for f in sorted(run_dir.glob("*.hash")):
+            hashes_in_run.append(f.read_text(encoding="utf-8").strip())
+    run_hash_content = "".join(hashes_in_run)
+
+    import hashlib
+
+    run_hash = hashlib.sha256(run_hash_content.encode("utf-8")).hexdigest()
+
+    chain = EvidenceChainRecord(
+        run_id=run_id,
+        previous_hash=previous_hash,
+        run_hash=run_hash,
+        timestamp=datetime.now(UTC).isoformat(),
+        chain_metadata='{"verified": ' + str(run_verification.get("verified", False)).lower() + '}',
+    )
+    await db_mgr.save_evidence_chain(chain)
+
+
 def _category_option(value: str | None) -> list[AttackCategory] | None:
     """Parse the --category option into a list of AttackCategory values."""
     if value is None or value.lower() == "all":
@@ -68,6 +104,7 @@ def _category_option(value: str | None) -> list[AttackCategory] | None:
 @click.option("--category", help="Attack categories to run (comma-separated), or 'all'.")
 @click.option("--plugin-dir", multiple=True, help="Directory with custom attack plugins (can be specified multiple times).", type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.option("--vault", default="./certifyai_vault", help="Path to evidence vault directory.", show_default=True)
+@click.option("--db", default="certifyai.db", help="Path to SQLite database.", show_default=True)
 @click.option("--report", help="Output compliance report to file (JSON).")
 @click.option("--framework", default="eu_ai_act", help="Compliance framework for reporting.")
 @click.option("--dry-run/--no-dry-run", default=False, help="Simulate without calling LLM.")
@@ -79,6 +116,7 @@ def run(
     category: str | None,
     plugin_dir: tuple[str, ...],
     vault: str,
+    db: str,
     report: str | None,
     framework: str,
     dry_run: bool,
@@ -113,7 +151,11 @@ def run(
         console.print(f"  Custom plugins: {', '.join(str(d) for d in plugin_dirs_list)}")
     console.print()
 
-    runner = AttackRunner(config, registry=registry)
+    # Initialize database
+    db_mgr = DatabaseManager(db)
+    asyncio.run(db_mgr.initialize())
+
+    runner = AttackRunner(config, registry=registry, db_manager=db_mgr)
     summary, results = asyncio.run(runner.run_all())
 
     # Store results in evidence vault
@@ -125,6 +167,15 @@ def run(
         evidence_vault = EvidenceVault(vault_path)
         evidence_vault.store_batch(results)
         console.print(f"  Evidence stored in: {vault}")
+
+        # Add evidence chain entry to database
+        try:
+            asyncio.run(_add_evidence_chain(db_mgr, summary.id, evidence_vault))
+        except Exception:
+            console.print("[yellow]Warning: Could not add evidence chain entry[/]")
+
+    # Close database
+    asyncio.run(db_mgr.close())
 
     console.print(f"\n[bold]Results:[/] {summary.total_attacks} total | "
                   f"[green]{summary.passed} passed[/] | "
@@ -196,8 +247,21 @@ def list_categories(plugin_dir: tuple[str, ...]) -> None:
 @click.option("--framework", default="eu_ai_act", help="Compliance framework.")
 @click.option("--provider", default="openai", help="LLM provider.")
 @click.option("--model", default="gpt-4o", help="Model name.")
-def init(framework: str, provider: str, model: str) -> None:
-    """Initialize a CertifyAI project configuration."""
+@click.option("--db", default="certifyai.db", help="Path to SQLite database.", show_default=True)
+def init(framework: str, provider: str, model: str, db: str) -> None:
+    """Initialize a CertifyAI project configuration and database."""
+    # Initialize database schema
+    import asyncio
+
+    async def _init_db() -> None:
+        db_mgr = DatabaseManager(db)
+        await db_mgr.initialize()
+        await db_mgr.close()
+
+    asyncio.run(_init_db())
+    console.print(f"[green]\u2713[/] Initialized database: {db}")
+
+    # Create config file
     cfg_path = Path("certifyai.yaml")
     if cfg_path.exists():
         console.print("[yellow]certifyai.yaml already exists[/]")
@@ -209,6 +273,7 @@ def init(framework: str, provider: str, model: str) -> None:
         "model": model,
         "default_framework": framework,
         "vault_path": "./certifyai_vault",
+        "database": db,
     }
 
     import yaml
@@ -218,6 +283,7 @@ def init(framework: str, provider: str, model: str) -> None:
     console.print(f"  Provider: {provider}")
     console.print(f"  Model:    {model}")
     console.print(f"  Framework: {framework}")
+    console.print(f"  Database: {db}")
     console.print()
     console.print("Run [bold]certifyai run[/] to start the attack battery.")
 

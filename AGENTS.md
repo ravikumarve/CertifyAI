@@ -11,12 +11,12 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Phase** | Pre-code (idea validated, tech stack finalized) |
-| **Code written** | 0 lines |
-| **Documents** | `idea.md` (updated with boilerplate positioning), `AGENTS.md` (this file) |
-| **Git repo** | No |
+| **Phase** | Phase 4 — SQLite Database Layer Complete |
+| **Code written** | ~4,000 lines |
+| **Documents** | 17 docs in `docs/` (Waves 1-3) |
+| **Git repo** | https://github.com/ravikumarve/CertifyAI |
 | **Revenue** | $0 |
-| **Next action** | Phase 1 implementation or pre-build demand validation |
+| **Next action** | Phase 5 — Begin Web Dashboard (Next.js 14 + Tailwind + recharts) OR TUI polish |
 
 ---
 
@@ -50,6 +50,28 @@
 ---
 
 ## 💾 Session Memory Ledger
+
+### [2026-07-21 19:45] — Phase 4: SQLite Database Layer Complete
+- **State:** Success — 13 new files, 88 tests passing, CLI wired end-to-end
+- **MCP Data Used:** code_tree (project structure), direct file reads (models.py, runner.py, vault.py for cross-reference)
+- **Agents Deployed:** Orchestrator (direct execution — all database code, runner wiring, CLI updates, tests)
+- **Architectural Decisions:**
+  - SQLAlchemy 2.0 async + aiosqlite with WAL mode for concurrent CLI+web reads
+  - 5 tables: `runs`, `results`, `evidence_chain`, `config`, `_schema_version` — no `users` or `framework_cache` (added post-v1)
+  - JSON evidence vault remains as parallel output system (dual-write for backwards compatibility)
+  - Engine version embedded in `_schema_version` for migration tracking
+  - Evidence chain entries computed from vault hash files and linked via SHA-256
+- **Files Created (4):**
+  - `certifyai/engine/database/__init__.py` — Package init
+  - `certifyai/engine/database/models.py` — 5 ORM tables with SQLAlchemy 2.0 mapped_column
+  - `certifyai/engine/database/manager.py` — DatabaseManager class (init, CRUD, aggregation, chain)
+  - `tests/test_database.py` — 20 tests (models, CRUD, aggregation, chain linking, schema version, WAL)
+- **Files Modified (2):**
+  - `certifyai/engine/runner.py` — `AttackRunner` accepts `db_manager` param, calls `_persist_results()` after run
+  - `certifyai/cli/main.py` — `init` command creates DB schema, `run` command accepts `--db` and stores evidence chain
+- **Test Results:** 88/88 tests passing (82 unit + 6 integration, 17 new database tests)
+- **Build Status:** Pending push to GitHub
+- **Next Turn Directive:** Phase 5 — Begin Web Dashboard (Next.js 14 + Tailwind + recharts) OR TUI polish
 
 ### [2026-07-21 19:15] — Phase 3: LiteLLM Integration Tests with NVIDIA NIM
 - **State**: Success — 6 integration tests passing against live NVIDIA NIM API
@@ -179,30 +201,35 @@
 
 ## 🎯 Quick Reference
 
-### Key Commands (once built)
+### Key Commands (for development)
 ```bash
-# Install
-pip install certifyai
+# Run all tests
+pytest tests/ -v
 
-# Quick start
-certifyai init                              # Setup wizard
-certifyai run --provider openai --model gpt-4o  # Run attack battery
-certifyai report --format pdf               # Generate compliance report
-certifyai vault --verify                    # Verify evidence integrity
+# Run unit tests only (skip integration)
+pytest tests/ -v -m "not integration"
+
+# Run integration tests (requires .env with NVIDIA NIM key)
+pytest tests/ -v -m integration --run-integration
+
+# CLI
+python -m certifyai.cli.main init --db /path/to/certifyai.db
+python -m certifyai.cli.main run --provider openai --model gpt-4o --db /path/to/certifyai.db
 ```
 
-### Directory Structure (proposed)
+### Directory Structure
 ```
 certifyai/
 ├── cli/                  # Click commands
 ├── tui/                  # Textual screens
 ├── engine/               # Core logic
-│   ├── redteam/          # Attack scenarios
-│   ├── evidence/         # Vault & hash chain
-│   └── compliance/       # Framework mapper
-├── web/                  # Next.js dashboard
+│   ├── redteam/          # Attack scenarios (6 categories, 18 scenarios)
+│   ├── evidence/         # Vault & SHA-256 hash chain
+│   ├── compliance/       # Framework mapper (EU AI Act, SOC 2, NIST AI RMF)
+│   └── database/         # SQLAlchemy 2.0 ORM + async DatabaseManager
+├── web/                  # Next.js dashboard (future)
 ├── docs/                 # MkDocs documentation
-├── tests/                # pytest + Playwright
+├── tests/                # pytest (88 tests — 82 unit + 6 integration)
 ├── pyproject.toml
 └── README.md
 ```
