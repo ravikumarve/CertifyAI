@@ -11,12 +11,12 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Phase** | Phase 4 — SQLite Database Layer Complete |
-| **Code written** | ~4,000 lines |
+| **Phase** | Phase 4b — CLI Rich UI & TUI Polish Complete |
+| **Code written** | ~5,000 lines |
 | **Documents** | 17 docs in `docs/` (Waves 1-3) |
 | **Git repo** | https://github.com/ravikumarve/CertifyAI |
 | **Revenue** | $0 |
-| **Next action** | Phase 5 — Begin Web Dashboard (Next.js 14 + Tailwind + recharts) OR TUI polish |
+| **Next action** | Phase 5 — Begin Web Dashboard (Next.js 14 + Tailwind + recharts) OR Gumroad prep |
 
 ---
 
@@ -50,6 +50,35 @@
 ---
 
 ## 💾 Session Memory Ledger
+
+### [2026-07-21 20:00] — Phase 4b: CLI Rich UI & TUI Polish Complete
+- **State:** Success — 4 files modified, 88 tests passing, Rich+TUI end-to-end verified
+- **MCP Data Used:** direct file reads (cli/main.py, tui/app.py, engine/runner.py, database/models.py)
+- **Agents Deployed:** Orchestrator (CLI Rich refinements, bug fixes), general agent (TUI rewrite)
+- **Architectural Decisions:**
+  - CLI uses Rich `Progress` bar during attack execution (via `progress_callback` on `AttackRunner`)
+  - CLI uses Rich `Panel` for config header and results summary, `Table` for per-result/verify/categories
+  - TUI uses Textual v8 with 4 tab panes (Dashboard, Run Attack, Results, Settings) and `@work` decorator for async runs
+  - `AttackRunner` now accepts optional `progress_callback(scenario_name, result)` for live updates
+  - Bug fixes: `config_json` serialized to JSON string (not dict), `evaluation` field serialized, status CHECK constraint widened
+- **CLI Enhancements:**
+  - `run`: Progress bar live update, summary Panel, color-coded results Table, --concurrency option
+  - `list-categories`: Rich Table with category/severity/scenarios
+  - `verify`: Rich Table with run IDs, status icons, mismatch count
+  - `init`: Rich Panel with config summary
+- **TUI Features (certifyai/tui/app.py, 804 lines):**
+  - Dashboard tab: status cards, last 5 runs table, auto-refresh
+  - Run Attack tab: Start/Dry Run buttons, progress bar, per-scenario results table
+  - Results tab: historical runs table with per-attack detail drill-down
+  - Settings tab: provider/model/api-key/vault/db inputs, framework dropdown, save to certifyai.yaml
+- **Bug Fixes:**
+  - `config_json` column: dict→JSON string serialization (was `sqlite3.ProgrammingError`)
+  - `evaluation` column: dict→JSON string serialization in ResultRecord creation
+  - `runs.status` CHECK constraint: widened to include 'pass', 'error', 'skipped' values
+  - Rich `Style(color="dim")` → `Style(color="grey58")` for skipped status
+- **Test Results:** 88/88 tests passing (82 unit + 6 integration)
+- **Build Status:** Pending push to GitHub
+- **Next Turn Directive:** Phase 5 — Begin Web Dashboard (Next.js 14 + Tailwind + recharts) OR Gumroad prep (pricing page, commercial license bundle)
 
 ### [2026-07-21 19:45] — Phase 4: SQLite Database Layer Complete
 - **State:** Success — 13 new files, 88 tests passing, CLI wired end-to-end
@@ -215,6 +244,9 @@ pytest tests/ -v -m integration --run-integration
 # CLI
 python -m certifyai.cli.main init --db /path/to/certifyai.db
 python -m certifyai.cli.main run --provider openai --model gpt-4o --db /path/to/certifyai.db
+
+# TUI
+python -m certifyai.tui.app
 ```
 
 ### Directory Structure

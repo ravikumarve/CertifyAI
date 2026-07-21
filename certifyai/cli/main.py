@@ -9,11 +9,15 @@ from typing import Any
 import click
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.style import Style
+from rich.table import Table
+from rich.text import Text
 
 from certifyai.engine.database.manager import DatabaseManager
 from certifyai.engine.database.models import EvidenceChainRecord
-from certifyai.engine.evidence.hasher import hash_chain_link
-from certifyai.engine.models import AttackCategory, ProviderConfig, RunConfig
+from certifyai.engine.models import AttackCategory, AttackStatus, ProviderConfig, RunConfig
 from certifyai.engine.runner import AttackRunner
 
 console = Console()
@@ -53,6 +57,8 @@ async def _add_evidence_chain(
     """Compute and persist an evidence chain entry for the run."""
     from datetime import UTC, datetime
 
+    import hashlib
+
     # Get previous chain entry for linking
     prev_entry = await db_mgr.get_latest_chain_entry()
     previous_hash = prev_entry.run_hash if prev_entry else "0" * 64
@@ -65,8 +71,6 @@ async def _add_evidence_chain(
         for f in sorted(run_dir.glob("*.hash")):
             hashes_in_run.append(f.read_text(encoding="utf-8").strip())
     run_hash_content = "".join(hashes_in_run)
-
-    import hashlib
 
     run_hash = hashlib.sha256(run_hash_content.encode("utf-8")).hexdigest()
 
@@ -96,6 +100,66 @@ def _category_option(value: str | None) -> list[AttackCategory] | None:
     return categories
 
 
+def _status_style(status: AttackStatus) -> Style:
+    """Return a Rich style for the given attack status."""
+    palette = {
+        AttackStatus.PASS: Style(color="green", bold=True),
+        AttackStatus.FAIL: Style(color="red", bold=True),
+        AttackStatus.ERROR: Style(color="yellow", bold=True),
+        AttackStatus.SKIPPED: Style(color="grey58", bold=False),
+    }
+    return palette.get(status, Style())
+
+
+def _severity_label(severity: str) -> Text:
+    """Return a colored Text for severity level."""
+    palette = {
+        "critical": Text("CRITICAL", style="red bold"),
+        "high": Text("HIGH", style="orange3 bold"),
+        "medium": Text("MEDIUM", style="yellow bold"),
+        "low": Text("LOW", style="green"),
+        "info": Text("INFO", style="dim"),
+    }
+    return palette.get(severity.lower(), Text(severity))
+
+
+def _build_results_table(
+    results: list[Any],
+    title: str = "Attack Results",
+) -> Table:
+    """Build a Rich Table of attack results."""
+    table = Table(
+        title=title,
+        title_style="bold cyan",
+        border_style="cyan",
+        header_style="bold white on #1a1a2e",
+    )
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Category", style="cyan", no_wrap=True)
+    table.add_column("Attack", style="white")
+    table.add_column("Status", width=8)
+    table.add_column("Severity", width=10)
+    table.add_column("Time", justify="right", width=8)
+    table.add_column("Evidence", width=10)
+
+    for i, r in enumerate(results, 1):
+        status_style = _status_style(r.status)
+        status_text = Text(r.status.value.upper(), style=status_style)
+        severity = _severity_label(r.severity.value if hasattr(r.severity, "value") else str(r.severity))
+        time_ms = f"{r.response_time_ms}ms" if r.response_time_ms else "-"
+        ev = "stored" if r.evidence_hash else "-"
+        table.add_row(
+            str(i),
+            r.category.value if hasattr(r.category, "value") else str(r.category),
+            r.scenario_id,
+            status_text,
+            severity,
+            time_ms,
+            ev,
+        )
+    return table
+
+
 @cli.command()
 @click.option("-p", "--provider", default="openai", help="LLM provider (e.g., openai, anthropic, ollama).")
 @click.option("-m", "--model", default="gpt-4o", help="Model name.")
@@ -108,6 +172,7 @@ def _category_option(value: str | None) -> list[AttackCategory] | None:
 @click.option("--report", help="Output compliance report to file (JSON).")
 @click.option("--framework", default="eu_ai_act", help="Compliance framework for reporting.")
 @click.option("--dry-run/--no-dry-run", default=False, help="Simulate without calling LLM.")
+@click.option("--concurrency", default=3, help="Number of concurrent LLM calls.", show_default=True, type=int)
 def run(
     provider: str,
     model: str,
@@ -120,6 +185,7 @@ def run(
     report: str | None,
     framework: str,
     dry_run: bool,
+    concurrency: int,
 ) -> None:
     """Run the attack battery against an LLM endpoint."""
     import asyncio
@@ -134,6 +200,7 @@ def run(
         provider=provider_cfg,
         attack_categories=_category_option(category),
         dry_run=dry_run,
+        concurrency=concurrency,
     )
 
     # Build registry with optional external plugin directories
@@ -142,31 +209,80 @@ def run(
     plugin_dirs_list = [Path(d) for d in plugin_dir] if plugin_dir else []
     registry = PluginRegistry(plugin_dirs=plugin_dirs_list)
 
-    console.print("[bold cyan]CertifyAI[/] — Running attack battery")
-    console.print(f"  Provider: {provider} | Model: {model}")
-    console.print(f"  Vault:    {vault}")
+    # Header panel
+    config_lines = [
+        f"[bold cyan]Provider:[/] {provider}",
+        f"[bold cyan]Model:[/]    {model}",
+        f"[bold cyan]Vault:[/]    {vault}",
+        f"[bold cyan]DB:[/]       {db}",
+        f"[bold cyan]Dry-run:[/]  {'yes' if dry_run else 'no'}",
+    ]
     if category:
-        console.print(f"  Categories: {category}")
+        config_lines.append(f"[bold cyan]Categories:[/] {category}")
     if plugin_dirs_list:
-        console.print(f"  Custom plugins: {', '.join(str(d) for d in plugin_dirs_list)}")
+        config_lines.append(f"[bold cyan]Plugins:[/] {', '.join(str(d) for d in plugin_dirs_list)}")
+    if concurrency:
+        config_lines.append(f"[bold cyan]Concurrency:[/] {concurrency}")
+
+    console.print()
+    console.print(Panel("\n".join(config_lines), title="[bold]CertifyAI[/]", border_style="cyan"))
     console.print()
 
     # Initialize database
     db_mgr = DatabaseManager(db)
     asyncio.run(db_mgr.initialize())
 
-    runner = AttackRunner(config, registry=registry, db_manager=db_mgr)
-    summary, results = asyncio.run(runner.run_all())
+    # Progress tracking
+    all_results: list[Any] = []
+    completed_count = 0
+
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console,
+    )
+
+    def _on_progress(scenario_name: str, result: Any) -> None:
+        nonlocal completed_count
+        completed_count += 1
+        all_results.append(result)
+        progress.update(task_id, completed=completed_count, description=f"Testing: {scenario_name}")
+
+    # Get scenario count for progress bar
+    scenarios = registry.get_scenarios_by_category(config.attack_categories)
+    total_prompts = sum(len(s.prompts) for s in scenarios)
+
+    with progress:
+        task_id = progress.add_task(
+            "[cyan]Running attacks...[/]",
+            total=total_prompts or 1,
+        )
+
+        runner = AttackRunner(
+            config,
+            registry=registry,
+            db_manager=db_mgr,
+            progress_callback=_on_progress,
+        )
+        if total_prompts == 0:
+            console.print("[yellow]No attack scenarios matched the configured categories[/]")
+            summary, results_list = asyncio.run(runner.run_all())
+        else:
+            summary, results_list = asyncio.run(runner.run_all())
+            all_results = results_list
 
     # Store results in evidence vault
-    if results:
+    if all_results:
         from certifyai.engine.evidence.vault import EvidenceVault
 
         vault_path = Path(vault)
         vault_path.mkdir(parents=True, exist_ok=True)
         evidence_vault = EvidenceVault(vault_path)
-        evidence_vault.store_batch(results)
-        console.print(f"  Evidence stored in: {vault}")
+        evidence_vault.store_batch(all_results)
+        console.print(f"  [green]\u2713[/] Evidence stored in: {vault}")
 
         # Add evidence chain entry to database
         try:
@@ -177,22 +293,34 @@ def run(
     # Close database
     asyncio.run(db_mgr.close())
 
-    console.print(f"\n[bold]Results:[/] {summary.total_attacks} total | "
-                  f"[green]{summary.passed} passed[/] | "
-                  f"[red]{summary.failed} failed[/] | "
-                  f"[yellow]{summary.errors} errors[/]")
-
+    # Results summary panel
+    summary_lines = [
+        f"[bold]Total:[/]  {summary.total_attacks}",
+        f"[green]Passed:[/]  {summary.passed}",
+        f"[red]Failed:[/]  {summary.failed}",
+        f"[yellow]Errors:[/]  {summary.errors}",
+    ]
     if summary.overall_score is not None:
-        console.print(f"  Score: {summary.overall_score:.1%}")
+        score_color = "green" if summary.overall_score >= 0.8 else "yellow" if summary.overall_score >= 0.5 else "red"
+        summary_lines.append(f"\n[bold]Score:[/] [{score_color}]{summary.overall_score:.1%}[/]")
 
-    if report and results:
+    console.print()
+    console.print(Panel("\n".join(summary_lines), title="[bold]Run Summary[/]", border_style="green"))
+
+    # Per-result table
+    if all_results:
+        console.print()
+        console.print(_build_results_table(all_results))
+
+    # Compliance report
+    if report and all_results:
         from certifyai.engine.compliance.mapper import ComplianceMapper
 
         mapper = ComplianceMapper()
         compliance_report = mapper.generate_report(
             run_id=summary.id,
             framework_id=framework,
-            attack_results=results,
+            attack_results=all_results,
         )
         import json
 
@@ -201,7 +329,8 @@ def run(
             json.dumps(compliance_report.model_dump(mode="json"), indent=2, default=str),
             encoding="utf-8",
         )
-        console.print(f"  Compliance report saved to: {report_path}")
+        console.print(f"  [green]\u2713[/] Compliance report saved to: {report_path}")
+        console.print()
 
 
 @cli.command()
@@ -213,16 +342,36 @@ def verify(path: str) -> None:
     vault = EvidenceVault(Path(path))
     result = vault.verify_all()
 
-    if result["verified"]:
-        console.print("[bold green]Vault integrity verified \u2713[/]")
-    else:
-        console.print("[bold red]Vault integrity verification FAILED \u2717[/]")
+    # Build verification table
+    table = Table(
+        title="Evidence Vault Verification",
+        title_style="bold cyan",
+        border_style="cyan",
+        header_style="bold white on #1a1a2e",
+    )
+    table.add_column("Run ID", style="cyan")
+    table.add_column("Status", width=10)
+    table.add_column("Files", justify="right")
+    table.add_column("Mismatches", width=20)
 
     for run_id, run_result in result.get("runs", {}).items():
-        status = "\u2713" if run_result.get("verified") else "\u2717"
-        console.print(f"  Run {run_id}: {status} ({run_result.get('total_files', 0)} files)")
-        for mismatch in run_result.get("mismatches", []):
-            console.print(f"    [red]! {mismatch}[/]")
+        verified = run_result.get("verified", False)
+        status = Text("\u2713", style="green bold") if verified else Text("\u2717", style="red bold")
+        mismatches = run_result.get("mismatches", [])
+        mismatch_text = ", ".join(mismatches[:3]) if mismatches else "-"
+        table.add_row(
+            run_id,
+            status,
+            str(run_result.get("total_files", 0)),
+            mismatch_text,
+        )
+
+    if result.get("verified"):
+        console.print(f"\n[bold green]\u2713 Vault integrity verified[/] — {result.get('total_runs', 0)} run(s) checked\n")
+    else:
+        console.print(f"\n[bold red]\u2717 Vault integrity verification FAILED[/]\n")
+    console.print(table)
+    console.print()
 
 
 @cli.command(name="list-categories")
@@ -234,12 +383,27 @@ def list_categories(plugin_dir: tuple[str, ...]) -> None:
     plugin_dirs_list = [Path(d) for d in plugin_dir] if plugin_dir else []
     registry = PluginRegistry(plugin_dirs=plugin_dirs_list)
 
-    console.print("[bold cyan]Available Attack Categories[/]\n")
+    table = Table(
+        title="Available Attack Categories",
+        title_style="bold cyan",
+        border_style="cyan",
+        header_style="bold white on #1a1a2e",
+    )
+    table.add_column("Category", style="cyan bold", width=22)
+    table.add_column("# Scenarios", justify="right", width=12)
+    table.add_column("Scenarios")
+
     for cat in registry.list_categories():
         scenarios = registry.get_scenarios_by_category([cat])
-        console.print(f"  [bold]{cat.value}[/] — {len(scenarios)} scenario(s)")
-        for s in scenarios:
-            console.print(f"    └ {s.id}: {s.name} [{s.severity.value}]")
+        scenario_list = ", ".join(f"{s.id} [{s.severity.value}]" for s in scenarios)
+        table.add_row(
+            cat.value,
+            str(len(scenarios)),
+            scenario_list,
+        )
+
+    console.print()
+    console.print(table)
     console.print()
 
 
@@ -250,7 +414,6 @@ def list_categories(plugin_dir: tuple[str, ...]) -> None:
 @click.option("--db", default="certifyai.db", help="Path to SQLite database.", show_default=True)
 def init(framework: str, provider: str, model: str, db: str) -> None:
     """Initialize a CertifyAI project configuration and database."""
-    # Initialize database schema
     import asyncio
 
     async def _init_db() -> None:
@@ -279,13 +442,22 @@ def init(framework: str, provider: str, model: str, db: str) -> None:
     import yaml
 
     cfg_path.write_text(yaml.dump(cfg, default_flow_style=False), encoding="utf-8")
-    console.print(f"[green]\u2713[/] Created {cfg_path}")
-    console.print(f"  Provider: {provider}")
-    console.print(f"  Model:    {model}")
-    console.print(f"  Framework: {framework}")
-    console.print(f"  Database: {db}")
+
+    # Config summary panel
+    config_lines = [
+        f"[bold cyan]Provider:[/]   {provider}",
+        f"[bold cyan]Model:[/]      {model}",
+        f"[bold cyan]Framework:[/]  {framework}",
+        f"[bold cyan]Database:[/]   {db}",
+    ]
     console.print()
-    console.print("Run [bold]certifyai run[/] to start the attack battery.")
+    console.print(Panel(
+        "\n".join(config_lines),
+        title="[bold green]CertifyAI Initialized[/]",
+        border_style="green",
+    ))
+    console.print("  Run [bold]certifyai run[/] to start the attack battery.")
+    console.print()
 
 
 if __name__ == "__main__":

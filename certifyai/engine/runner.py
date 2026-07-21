@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import collections.abc
+import json
 import logging
 import time
 from typing import Any
@@ -34,10 +36,12 @@ class AttackRunner:
         config: RunConfig,
         registry: PluginRegistry | None = None,
         db_manager: Any = None,
+        progress_callback: collections.abc.Callable[[str, AttackResult], None] | None = None,
     ) -> None:
         self.config = config
         self.registry = registry or PluginRegistry()
         self.db_manager = db_manager
+        self.progress_callback = progress_callback
 
         self.registry.load_all()
         self.llm = self._build_llm_client()
@@ -100,6 +104,11 @@ class AttackRunner:
                     result.run_id = summary.id
                     scenario_results.append(result)
 
+            # Fire progress callback for this scenario
+            if self.progress_callback is not None:
+                for r in scenario_results:
+                    self.progress_callback(scenario.name, r)
+
             return scenario_results
 
         task_results = await asyncio.gather(
@@ -152,7 +161,7 @@ class AttackRunner:
             status=summary.status.value,
             started_at=summary.started_at,
             finished_at=summary.completed_at or datetime.now(UTC).isoformat(),
-            config_json=summary.config_snapshot,
+            config_json=json.dumps(summary.config_snapshot, default=str),
             total_attacks=summary.total_attacks,
             passed=summary.passed,
             failed=summary.failed,
@@ -165,6 +174,11 @@ class AttackRunner:
         # Create result records
         result_records = []
         for r in results:
+            # Serialize evaluation to JSON string if it's a dict
+            evaluation = r.evaluation
+            if isinstance(evaluation, dict):
+                evaluation = json.dumps(evaluation, default=str)
+
             result_records.append(
                 ResultRecord(
                     id=r.id,
@@ -176,10 +190,10 @@ class AttackRunner:
                     severity=r.severity.value,
                     prompt_text=r.prompt,
                     response_text=r.response,
-                    evaluation=r.evaluation,
+                    evaluation=evaluation,
                     response_time_ms=r.response_time_ms,
                     evidence_hash=r.evidence_hash,
-                    clause_refs=str(r.clause_refs) if r.clause_refs else None,
+                    clause_refs=json.dumps(r.clause_refs) if r.clause_refs else None,
                     error_message=r.error_message,
                 )
             )

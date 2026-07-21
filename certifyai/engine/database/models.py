@@ -91,7 +91,7 @@ class RunRecord(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "status IN ('pending', 'running', 'completed', 'failed', 'cancelled')",
+            "status IN ('pending', 'running', 'completed', 'failed', 'cancelled', 'pass', 'error', 'skipped')",
             name="ck_runs_status",
         ),
         Index("idx_runs_status", "status"),
