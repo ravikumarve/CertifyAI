@@ -51,6 +51,14 @@
 
 ## 💾 Session Memory Ledger
 
+### [2026-07-21 15:00] — GitHub Repository Created & Initial Commit Pushed
+- **State:** Success — Repo created at `https://github.com/ravikumarve/CertifyAI`
+- **Description:** "Continuous compliance engine for AI runtimes. Self-hosted CLI + TUI + Web Dashboard that tests LLMs against 30+ attack scenarios and generates audit-ready evidence for EU AI Act, SOC 2 Type II, and NIST AI RMF. No subscription. No cloud dependency. Bring your own LLM key."
+- **Files pushed:** 21 files — README.md, idea.md, AGENTS.md, .gitignore, and 17 docs
+- **Commit message:** "Initial commit: complete documentation suite for CertifyAI"
+- **Branch:** main
+- **Next Turn Directive:** Begin implementation — pyproject.toml scaffold, Pydantic models, LiteLLM integration, attack plugin system
+
 ### [2026-07-21 14:30] — Wave 3 Docs Complete (GTM Suite + Commercial License)
 - **State:** Success — All 17 docs complete (Waves 1-3), 20,668 total lines, 1.1MB
 - **MCP Data Used:** direct file reads (agent profiles, existing docs for cross-reference consistency)
