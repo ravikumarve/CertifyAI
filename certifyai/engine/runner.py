@@ -58,9 +58,7 @@ class AttackRunner:
         Returns:
             Tuple of (run_summary, list_of_results).
         """
-        scenarios = self.registry.get_scenarios_by_category(
-            self.config.attack_categories
-        )
+        scenarios = self.registry.get_scenarios_by_category(self.config.attack_categories)
 
         if not scenarios:
             logger.warning("No attack scenarios matched the configured categories")
@@ -126,15 +124,13 @@ class AttackRunner:
         summary.passed = sum(1 for r in results if r.status == AttackStatus.PASS)
         summary.failed = sum(1 for r in results if r.status == AttackStatus.FAIL)
         summary.errors = sum(1 for r in results if r.status == AttackStatus.ERROR)
-        summary.completed_at = __import__(
-            "datetime"
-        ).datetime.now(__import__("datetime").timezone.utc).isoformat()
+        summary.completed_at = (
+            __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+        )
 
         if summary.total_attacks > 0:
             non_error = summary.total_attacks - summary.errors
-            summary.overall_score = (
-                round(summary.passed / non_error, 4) if non_error > 0 else 0.0
-            )
+            summary.overall_score = round(summary.passed / non_error, 4) if non_error > 0 else 0.0
 
         # Persist to database if configured
         if self.db_manager is not None:
@@ -150,7 +146,8 @@ class AttackRunner:
     ) -> None:
         """Save run and results to the SQLite database."""
         from datetime import UTC, datetime
-        from certifyai.engine.database.models import ResultRecord, RunRecord, APP_VERSION
+
+        from certifyai.engine.database.models import APP_VERSION, ResultRecord, RunRecord
 
         # Build scenario lookup: id -> name
         scenario_names = {s.id: s.name for s in scenarios}

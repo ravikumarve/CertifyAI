@@ -42,9 +42,7 @@ class ComplianceMapper:
         )
 
         if not yaml_files:
-            logger.warning(
-                "No framework YAML files found in %s", self.frameworks_dir
-            )
+            logger.warning("No framework YAML files found in %s", self.frameworks_dir)
             self._frameworks = frameworks
             return frameworks
 
@@ -66,9 +64,7 @@ class ComplianceMapper:
                             description=clause_data.get("description", ""),
                             severity=Severity(clause_data.get("severity", "medium")),
                             attack_ids=clause_data.get("attack_ids", []),
-                            evidence_requirements=clause_data.get(
-                                "evidence_requirements", []
-                            ),
+                            evidence_requirements=clause_data.get("evidence_requirements", []),
                         )
                     )
 
@@ -143,19 +139,13 @@ class ComplianceMapper:
                 clause_results[clause.id] = []
                 continue
 
-            passed = sum(
-                1
-                for r in relevant_results
-                if r.status == AttackStatus.PASS
-            )
+            passed = sum(1 for r in relevant_results if r.status == AttackStatus.PASS)
             total = len(relevant_results)
             clause_scores[clause.id] = round(passed / total, 4) if total > 0 else 0.0
             clause_results[clause.id] = relevant_results
 
         overall = (
-            round(sum(clause_scores.values()) / len(clause_scores), 4)
-            if clause_scores
-            else 0.0
+            round(sum(clause_scores.values()) / len(clause_scores), 4) if clause_scores else 0.0
         )
 
         return ComplianceReport(

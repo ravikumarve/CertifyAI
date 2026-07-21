@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from certifyai.engine.models import AttackCategory, AttackScenario, AttackStatus, Severity
+from certifyai.engine.models import AttackCategory, AttackScenario, Severity
 from certifyai.engine.redteam.base import AttackPlugin
 
 

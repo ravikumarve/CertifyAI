@@ -12,7 +12,6 @@ Usage::
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -24,18 +23,15 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import sessionmaker
 
 from certifyai.engine.database.models import (
-    APP_VERSION,
+    CREATE_TRIGGERS_SQL,
     SCHEMA_VERSION,
     Base,
     ConfigRecord,
-    CREATE_TRIGGERS_SQL,
     EvidenceChainRecord,
     ResultRecord,
     RunRecord,
-    SchemaVersionRecord,
 )
 
 logger = logging.getLogger(__name__)
@@ -109,8 +105,13 @@ class DatabaseManager:
         if self._engine is not None:
             await self._engine.dispose()
             self._engine = None
-            self._initialized = False
-            logger.debug("Database closed: %s", self.db_path)
+        self._initialized = False
+        logger.debug("Database closed: %s", self.db_path)
+
+    @property
+    def is_initialized(self) -> bool:
+        """Whether the database engine and schema have been initialized."""
+        return self._initialized
 
     # ------------------------------------------------------------------
     # Session access
@@ -147,9 +148,7 @@ class DatabaseManager:
                     logger.debug("Trigger/Pragma already exists (safe to ignore)")
 
         # Seed schema version if empty
-        result = await conn.execute(
-            text("SELECT COUNT(*) FROM _schema_version")
-        )
+        result = await conn.execute(text("SELECT COUNT(*) FROM _schema_version"))
         count = result.scalar()
         if count == 0:
             from datetime import UTC, datetime
@@ -180,18 +179,13 @@ class DatabaseManager:
         async with self.read_session() as s:
             return await s.get(RunRecord, run_id)
 
-    async def list_runs(
-        self, limit: int = 20, offset: int = 0
-    ) -> list[RunRecord]:
+    async def list_runs(self, limit: int = 20, offset: int = 0) -> list[RunRecord]:
         """List recent runs ordered by start time descending."""
         async with self.read_session() as s:
             from sqlalchemy import select
 
             stmt = (
-                select(RunRecord)
-                .order_by(RunRecord.started_at.desc())
-                .limit(limit)
-                .offset(offset)
+                select(RunRecord).order_by(RunRecord.started_at.desc()).limit(limit).offset(offset)
             )
             result = await s.execute(stmt)
             return list(result.scalars().all())
@@ -237,11 +231,7 @@ class DatabaseManager:
         async with self.read_session() as s:
             from sqlalchemy import select
 
-            stmt = (
-                select(EvidenceChainRecord)
-                .order_by(EvidenceChainRecord.id.desc())
-                .limit(1)
-            )
+            stmt = select(EvidenceChainRecord).order_by(EvidenceChainRecord.id.desc()).limit(1)
             result = await s.execute(stmt)
             return result.scalar_one_or_none()
 
@@ -275,9 +265,7 @@ class DatabaseManager:
             from sqlalchemy import func, select
 
             # Total runs
-            total_runs_result = await s.execute(
-                select(func.count(RunRecord.id))
-            )
+            total_runs_result = await s.execute(select(func.count(RunRecord.id)))
             total_runs = total_runs_result.scalar() or 0
 
             # Aggregated attack counts
@@ -298,9 +286,7 @@ class DatabaseManager:
                 "total_errors": row[3] or 0,
             }
 
-    async def get_results_by_category(
-        self, run_id: str
-    ) -> list[dict[str, Any]]:
+    async def get_results_by_category(self, run_id: str) -> list[dict[str, Any]]:
         """Get per-category pass/fail counts for a run."""
         async with self.read_session() as s:
             from sqlalchemy import func, select
@@ -315,7 +301,4 @@ class DatabaseManager:
                 .group_by(ResultRecord.category, ResultRecord.status)
             )
             result = await s.execute(stmt)
-            return [
-                {"category": row[0], "status": row[1], "count": row[2]}
-                for row in result.all()
-            ]
+            return [{"category": row[0], "status": row[1], "count": row[2]} for row in result.all()]

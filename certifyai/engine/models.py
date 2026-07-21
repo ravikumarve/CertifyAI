@@ -93,9 +93,7 @@ class AttackResult(BaseModel):
     )
     evidence_hash: str | None = Field(default=None, description="SHA-256 of evidence blob")
     clause_refs: list[str] = Field(default_factory=list)
-    created_at: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class EvidenceBlob(BaseModel):
@@ -106,18 +104,14 @@ class EvidenceBlob(BaseModel):
     prompt: str
     response: str | None
     evaluation: dict[str, Any]
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class RunConfig(BaseModel):
     """Configuration for a single attack run."""
 
     provider: ProviderConfig
-    frameworks: list[str] = Field(
-        default_factory=lambda: ["eu_ai_act", "soc2", "nist_ai_rmf"]
-    )
+    frameworks: list[str] = Field(default_factory=lambda: ["eu_ai_act", "soc2", "nist_ai_rmf"])
     attack_categories: list[AttackCategory] | None = Field(
         default=None, description="None = run all available categories"
     )
@@ -130,9 +124,7 @@ class RunSummary(BaseModel):
 
     id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
     status: AttackStatus
-    started_at: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    started_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     completed_at: str | None = Field(default=None)
     total_attacks: int = 0
     passed: int = 0
@@ -162,12 +154,8 @@ class ComplianceReport(BaseModel):
     run_id: str
     framework: str
     overall_score: float = Field(ge=0.0, le=1.0)
-    clause_scores: dict[str, float] = Field(
-        description="Per-clause compliance scores (0.0 to 1.0)"
-    )
+    clause_scores: dict[str, float] = Field(description="Per-clause compliance scores (0.0 to 1.0)")
     clause_results: dict[str, list[AttackResult]] = Field(
         description="Attack results mapped to each clause"
     )
-    generated_at: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    generated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())

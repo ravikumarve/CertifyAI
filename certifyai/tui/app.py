@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import json
+import contextlib
+import logging
 import time
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import yaml
-
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical
@@ -30,8 +29,8 @@ from textual.widgets import (
     TabPane,
 )
 
-from certifyai.engine.database.manager import DatabaseManager, DEFAULT_DB_PATH
-from certifyai.engine.database.models import ResultRecord, RunRecord
+from certifyai.engine.database.manager import DEFAULT_DB_PATH, DatabaseManager
+from certifyai.engine.database.models import RunRecord
 from certifyai.engine.evidence.vault import EvidenceVault
 from certifyai.engine.models import (
     AttackCategory,
@@ -43,6 +42,8 @@ from certifyai.engine.models import (
 )
 from certifyai.engine.registry import PluginRegistry
 from certifyai.engine.runner import AttackRunner
+
+logger = logging.getLogger(__name__)
 
 CONFIG_PATH = Path("certifyai.yaml")
 DEFAULT_VAULT_PATH = Path("certifyai_vault")
@@ -131,7 +132,7 @@ class DashboardContent(Vertical):
         db = self._get_app().db_manager
 
         try:
-            if not db._initialized:
+            if not db.is_initialized:
                 await db.initialize()
 
             loading.display = True
@@ -144,14 +145,14 @@ class DashboardContent(Vertical):
             self._update_runs_table(runs)
             error_label.update("")
         except Exception as exc:
+            logger.exception("Dashboard refresh failed")
             error_label.update(f"Dashboard error: {exc}")
         finally:
             loading.display = False
 
     def _update_status_cards(self, stats: dict[str, Any], last_run: RunRecord | None) -> None:
         self.query_one("#dash-last-run", Static).update(
-            f"[bold]Last Run[/bold]\n"
-            f"{'Never' if last_run is None else last_run.started_at[:19]}"
+            f"[bold]Last Run[/bold]\n{'Never' if last_run is None else last_run.started_at[:19]}"
         )
 
         t = stats["total_attacks"]
@@ -184,8 +185,7 @@ class DashboardContent(Vertical):
         else:
             integrity = "Not found"
         self.query_one("#dash-vault", Static).update(
-            f"[bold]Vault[/bold]\n"
-            f"Runs: {stats['total_runs']}  Integrity: {integrity}"
+            f"[bold]Vault[/bold]\nRuns: {stats['total_runs']}  Integrity: {integrity}"
         )
 
     def _update_runs_table(self, runs: list[RunRecord]) -> None:
@@ -287,7 +287,7 @@ class RunAttackContent(Vertical):
     async def run_attack_worker(self, dry_run: bool) -> None:
         db = self._get_app().db_manager
         try:
-            if not db._initialized:
+            if not db.is_initialized:
                 await db.initialize()
 
             cfg = load_config()
@@ -299,10 +299,8 @@ class RunAttackContent(Vertical):
             if categories_str:
                 attack_categories = []
                 for c in categories_str:
-                    try:
+                    with contextlib.suppress(ValueError):
                         attack_categories.append(AttackCategory(c))
-                    except ValueError:
-                        pass
 
             provider = ProviderConfig(
                 provider=prov_cfg.get("name", "openai"),
@@ -342,6 +340,7 @@ class RunAttackContent(Vertical):
             self.post_message(AttackFinished(summary, results))
 
         except Exception as exc:
+            logger.exception("Attack worker failed")
             self.app.notify(f"Attack failed: {exc}", severity="error")
             self.query_one("#run-error", Static).update(f"Error: {exc}")
         finally:
@@ -443,7 +442,7 @@ class ResultsContent(Vertical):
         db = self._get_app().db_manager
 
         try:
-            if not db._initialized:
+            if not db.is_initialized:
                 await db.initialize()
 
             loading.display = True
@@ -477,6 +476,7 @@ class ResultsContent(Vertical):
 
             error_label.update("")
         except Exception as exc:
+            logger.exception("Failed to load results list")
             error_label.update(f"Error loading runs: {exc}")
         finally:
             loading.display = False
@@ -517,6 +517,7 @@ class ResultsContent(Vertical):
             )
             error_label.update("")
         except Exception as exc:
+            logger.exception("Failed to load run detail")
             error_label.update(f"Error loading detail: {exc}")
 
 
@@ -569,9 +570,7 @@ class SettingsContent(Vertical):
         self.query_one("#cfg-provider", Input).value = prov.get("name", "openai")
         self.query_one("#cfg-model", Input).value = prov.get("model", "gpt-4o")
         self.query_one("#cfg-api-key", Input).value = prov.get("api_key", "")
-        self.query_one("#cfg-vault-path", Input).value = paths.get(
-            "vault", str(DEFAULT_VAULT_PATH)
-        )
+        self.query_one("#cfg-vault-path", Input).value = paths.get("vault", str(DEFAULT_VAULT_PATH))
         self.query_one("#cfg-db-path", Input).value = paths.get("database", DEFAULT_DB_PATH)
 
         # Set framework
@@ -625,6 +624,7 @@ class SettingsContent(Vertical):
             )
             self.app.notify("Configuration saved", severity="information")
         except Exception as exc:
+            logger.exception("Failed to save config")
             self.query_one("#cfg-status", Static).update(f"[red]Save failed: {exc}[/red]")
 
 
@@ -639,19 +639,38 @@ class CertifyAIApp(App):
     TITLE = "CertifyAI"
     SUB_TITLE = "Continuous Compliance Engine for AI Runtimes"
     CSS = """
+    /* ── Stealth Brutalism Theme ── */
+
     Screen {
-        background: $surface;
+        background: #000000;
+    }
+
+    /* Override Textual theme variables */
+    $primary: #D4FF00;
+    $secondary: #00E5FF;
+    $error: #FF0055;
+    $surface: #090909;
+    $panel: #121212;
+    $boost: #222222;
+    $text: #FFFFFF;
+    $text-muted: #888888;
+    $border: #222222;
+
+    /* ── Typography ── */
+
+    * {
+        font-family: "JetBrains Mono", monospace;
     }
 
     .section-title {
         text-style: bold;
         padding: 1 0 0 1;
-        color: $primary-lighten-2;
-        border-bottom: solid $primary-darken-2;
+        color: #D4FF00;
+        border-bottom: solid #444444;
     }
 
     .error-text {
-        color: $error;
+        color: #FF0055;
         padding: 0 1;
     }
 
@@ -662,11 +681,12 @@ class CertifyAIApp(App):
     .run-summary-box {
         padding: 1;
         margin: 1 0;
-        border: solid $success;
-        background: $panel;
+        border: solid #444444;
+        background: #121212;
     }
 
-    /* Dashboard cards */
+    /* ── Dashboard Cards ── */
+
     #dash-cards {
         layout: grid;
         grid-size: 2 2;
@@ -677,22 +697,28 @@ class CertifyAIApp(App):
 
     .dash-card {
         height: 5;
-        border: solid $primary-darken-2;
-        background: $panel;
+        border: solid #222222;
+        background: #090909;
         padding: 1;
+    }
+
+    .dash-card:hover {
+        border: solid #444444;
+        background: #121212;
     }
 
     #dash-runs-table {
         height: 12;
     }
 
-    /* Run tab */
+    /* ── Run Attack Tab ── */
+
     #run-config-summary {
         layout: horizontal;
         height: auto;
         padding: 1;
-        background: $panel;
-        border: solid $primary-darken-2;
+        background: #121212;
+        border: solid #222222;
     }
 
     #run-config-summary > Static {
@@ -709,15 +735,51 @@ class CertifyAIApp(App):
         margin: 0 1 0 0;
     }
 
+    Button {
+        background: #090909;
+        color: #FFFFFF;
+        border: solid #222222;
+        text-style: bold;
+    }
+
+    Button:hover {
+        background: #121212;
+        border: solid #444444;
+    }
+
+    Button.-primary {
+        background: #090909;
+        color: #D4FF00;
+        border: solid #D4FF00;
+    }
+
+    Button.-primary:hover {
+        background: #D4FF00;
+        color: #000000;
+    }
+
     #run-elapsed, #run-current {
         padding: 0 1;
+        color: #888888;
     }
 
     #run-scenario-table {
         height: 12;
     }
 
-    /* Results tab */
+    /* ── Progress Bar ── */
+
+    ProgressBar {
+        height: 1;
+    }
+
+    ProgressBar > .bar {
+        background: #222222;
+        color: #D4FF00;
+    }
+
+    /* ── Results Tab ── */
+
     #results-runs-table {
         height: 14;
     }
@@ -726,13 +788,25 @@ class CertifyAIApp(App):
         height: 10;
     }
 
-    /* Settings tab */
+    /* ── Settings Tab ── */
+
     SettingsContent Input, SettingsContent Select {
         margin: 0 1 0 1;
     }
 
+    Input, Select {
+        background: #090909;
+        color: #FFFFFF;
+        border: solid #222222;
+    }
+
+    Input:focus, Select:focus {
+        border: solid #444444;
+    }
+
     SettingsContent Label {
         padding: 1 1 0 1;
+        color: #888888;
     }
 
     #cfg-save {
@@ -740,18 +814,110 @@ class CertifyAIApp(App):
         width: 24;
     }
 
-    /* Tab content padding */
+    /* ── Data Tables ── */
+
+    DataTable {
+        background: #090909;
+        border: solid #222222;
+    }
+
+    DataTable > .datatable--header {
+        background: #121212;
+        color: #888888;
+        text-style: bold;
+    }
+
+    DataTable > .datatable--row:hover {
+        background: #121212;
+    }
+
+    DataTable > .datatable--row-highlight {
+        background: #1a1a1a;
+    }
+
+    /* ── Tab Content ── */
+
     Vertical {
         padding: 0 1;
     }
 
-    /* Loading indicator */
+    TabbedContent {
+        background: #000000;
+    }
+
+    TabPane {
+        background: #000000;
+    }
+
+    Tabs {
+        background: #090909;
+    }
+
+    Tabs Tab {
+        background: #090909;
+        color: #888888;
+        border: solid #222222;
+        text-style: bold;
+        padding: 0 2;
+    }
+
+    Tabs Tab:hover {
+        background: #121212;
+        color: #FFFFFF;
+    }
+
+    Tabs Tab.-active {
+        background: #000000;
+        color: #D4FF00;
+        border: solid #444444;
+        border-bottom: solid #D4FF00;
+    }
+
+    /* ── Header & Footer ── */
+
+    Header {
+        background: #090909;
+        color: #D4FF00;
+        border-bottom: solid #222222;
+    }
+
+    Footer {
+        background: #121212;
+        color: #888888;
+        border-top: solid #222222;
+    }
+
+    Footer > .footer--key {
+        background: #000000;
+        color: #D4FF00;
+        border: solid #222222;
+    }
+
+    /* ── Loading Indicator ── */
+
     LoadingIndicator {
         height: 1;
     }
+
+    /* ── Select / Dropdown ── */
+
+    Select > .select-current {
+        background: #090909;
+        color: #FFFFFF;
+    }
+
+    Select > .select-menu {
+        background: #121212;
+        border: solid #222222;
+    }
+
+    Select > .select-menu > .select-item:hover {
+        background: #1a1a1a;
+        color: #D4FF00;
+    }
     """
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[tuple[str, str, str]]] = [
         ("d", "switch_tab('dashboard')", "Dashboard"),
         ("r", "switch_tab('run')", "Run Attack"),
         ("t", "switch_tab('results')", "Results"),
@@ -783,6 +949,7 @@ class CertifyAIApp(App):
         try:
             await self.db_manager.initialize()
         except Exception as exc:
+            logger.exception("Database init failed")
             self.notify(f"Database init warning: {exc}", severity="warning")
 
     async def on_unmount(self) -> None:

@@ -51,13 +51,10 @@ def cli(verbose: int) -> None:
     )
 
 
-async def _add_evidence_chain(
-    db_mgr: DatabaseManager, run_id: str, vault: Any
-) -> None:
+async def _add_evidence_chain(db_mgr: DatabaseManager, run_id: str, vault: Any) -> None:
     """Compute and persist an evidence chain entry for the run."""
-    from datetime import UTC, datetime
-
     import hashlib
+    from datetime import UTC, datetime
 
     # Get previous chain entry for linking
     prev_entry = await db_mgr.get_latest_chain_entry()
@@ -79,7 +76,7 @@ async def _add_evidence_chain(
         previous_hash=previous_hash,
         run_hash=run_hash,
         timestamp=datetime.now(UTC).isoformat(),
-        chain_metadata='{"verified": ' + str(run_verification.get("verified", False)).lower() + '}',
+        chain_metadata='{"verified": ' + str(run_verification.get("verified", False)).lower() + "}",
     )
     await db_mgr.save_evidence_chain(chain)
 
@@ -93,10 +90,10 @@ def _category_option(value: str | None) -> list[AttackCategory] | None:
         part = part.strip()
         try:
             categories.append(AttackCategory(part))
-        except ValueError:
+        except ValueError as exc:
             raise click.BadParameter(
                 f"Invalid category '{part}'. Choices: {', '.join(c.value for c in AttackCategory)}"
-            )
+            ) from exc
     return categories
 
 
@@ -145,7 +142,9 @@ def _build_results_table(
     for i, r in enumerate(results, 1):
         status_style = _status_style(r.status)
         status_text = Text(r.status.value.upper(), style=status_style)
-        severity = _severity_label(r.severity.value if hasattr(r.severity, "value") else str(r.severity))
+        severity = _severity_label(
+            r.severity.value if hasattr(r.severity, "value") else str(r.severity)
+        )
         time_ms = f"{r.response_time_ms}ms" if r.response_time_ms else "-"
         ev = "stored" if r.evidence_hash else "-"
         table.add_row(
@@ -161,18 +160,34 @@ def _build_results_table(
 
 
 @cli.command()
-@click.option("-p", "--provider", default="openai", help="LLM provider (e.g., openai, anthropic, ollama).")
+@click.option(
+    "-p", "--provider", default="openai", help="LLM provider (e.g., openai, anthropic, ollama)."
+)
 @click.option("-m", "--model", default="gpt-4o", help="Model name.")
-@click.option("-k", "--api-key", envvar="CERTIFYAI_API_KEY", help="API key (or set CERTIFYAI_API_KEY).")
+@click.option(
+    "-k", "--api-key", envvar="CERTIFYAI_API_KEY", help="API key (or set CERTIFYAI_API_KEY)."
+)
 @click.option("-e", "--endpoint", help="Custom API endpoint (for Ollama / OpenAI-compatible).")
 @click.option("--category", help="Attack categories to run (comma-separated), or 'all'.")
-@click.option("--plugin-dir", multiple=True, help="Directory with custom attack plugins (can be specified multiple times).", type=click.Path(exists=True, file_okay=False, dir_okay=True))
-@click.option("--vault", default="./certifyai_vault", help="Path to evidence vault directory.", show_default=True)
+@click.option(
+    "--plugin-dir",
+    multiple=True,
+    help="Directory with custom attack plugins (can be specified multiple times).",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+)
+@click.option(
+    "--vault",
+    default="./certifyai_vault",
+    help="Path to evidence vault directory.",
+    show_default=True,
+)
 @click.option("--db", default="certifyai.db", help="Path to SQLite database.", show_default=True)
 @click.option("--report", help="Output compliance report to file (JSON).")
 @click.option("--framework", default="eu_ai_act", help="Compliance framework for reporting.")
 @click.option("--dry-run/--no-dry-run", default=False, help="Simulate without calling LLM.")
-@click.option("--concurrency", default=3, help="Number of concurrent LLM calls.", show_default=True, type=int)
+@click.option(
+    "--concurrency", default=3, help="Number of concurrent LLM calls.", show_default=True, type=int
+)
 def run(
     provider: str,
     model: str,
@@ -301,11 +316,19 @@ def run(
         f"[yellow]Errors:[/]  {summary.errors}",
     ]
     if summary.overall_score is not None:
-        score_color = "green" if summary.overall_score >= 0.8 else "yellow" if summary.overall_score >= 0.5 else "red"
+        score_color = (
+            "green"
+            if summary.overall_score >= 0.8
+            else "yellow"
+            if summary.overall_score >= 0.5
+            else "red"
+        )
         summary_lines.append(f"\n[bold]Score:[/] [{score_color}]{summary.overall_score:.1%}[/]")
 
     console.print()
-    console.print(Panel("\n".join(summary_lines), title="[bold]Run Summary[/]", border_style="green"))
+    console.print(
+        Panel("\n".join(summary_lines), title="[bold]Run Summary[/]", border_style="green")
+    )
 
     # Per-result table
     if all_results:
@@ -356,7 +379,9 @@ def verify(path: str) -> None:
 
     for run_id, run_result in result.get("runs", {}).items():
         verified = run_result.get("verified", False)
-        status = Text("\u2713", style="green bold") if verified else Text("\u2717", style="red bold")
+        status = (
+            Text("\u2713", style="green bold") if verified else Text("\u2717", style="red bold")
+        )
         mismatches = run_result.get("mismatches", [])
         mismatch_text = ", ".join(mismatches[:3]) if mismatches else "-"
         table.add_row(
@@ -367,15 +392,22 @@ def verify(path: str) -> None:
         )
 
     if result.get("verified"):
-        console.print(f"\n[bold green]\u2713 Vault integrity verified[/] — {result.get('total_runs', 0)} run(s) checked\n")
+        console.print(
+            f"\n[bold green]\u2713 Vault integrity verified[/] — {result.get('total_runs', 0)} run(s) checked\n"
+        )
     else:
-        console.print(f"\n[bold red]\u2717 Vault integrity verification FAILED[/]\n")
+        console.print("\n[bold red]\u2717 Vault integrity verification FAILED[/]\n")
     console.print(table)
     console.print()
 
 
 @cli.command(name="list-categories")
-@click.option("--plugin-dir", multiple=True, help="Directory with custom attack plugins.", type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.option(
+    "--plugin-dir",
+    multiple=True,
+    help="Directory with custom attack plugins.",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+)
 def list_categories(plugin_dir: tuple[str, ...]) -> None:
     """List all available attack categories and their scenario counts."""
     from certifyai.engine.registry import PluginRegistry
@@ -451,11 +483,13 @@ def init(framework: str, provider: str, model: str, db: str) -> None:
         f"[bold cyan]Database:[/]   {db}",
     ]
     console.print()
-    console.print(Panel(
-        "\n".join(config_lines),
-        title="[bold green]CertifyAI Initialized[/]",
-        border_style="green",
-    ))
+    console.print(
+        Panel(
+            "\n".join(config_lines),
+            title="[bold green]CertifyAI Initialized[/]",
+            border_style="green",
+        )
+    )
     console.print("  Run [bold]certifyai run[/] to start the attack battery.")
     console.print()
 

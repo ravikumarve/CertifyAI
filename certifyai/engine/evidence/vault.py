@@ -49,9 +49,7 @@ class EvidenceVault:
 
         # Store evidence file
         evidence_path = run_dir / f"{result.scenario_id}_{result.id[:8]}.json"
-        evidence_path.write_text(
-            json.dumps(evidence_dict, indent=2, default=str), encoding="utf-8"
-        )
+        evidence_path.write_text(json.dumps(evidence_dict, indent=2, default=str), encoding="utf-8")
 
         # Store hash file
         hash_path = run_dir / f"{result.scenario_id}_{result.id[:8]}.hash"

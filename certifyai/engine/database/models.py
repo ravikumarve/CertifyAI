@@ -18,14 +18,11 @@ from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
-    Column,
     Float,
     ForeignKey,
     Index,
     Integer,
     Text,
-    create_engine,
-    event,
     text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -82,10 +79,10 @@ class RunRecord(Base):
     )
 
     # Relationships
-    results: Mapped[list["ResultRecord"]] = relationship(
+    results: Mapped[list[ResultRecord]] = relationship(
         back_populates="run", cascade="all, delete-orphan", passive_deletes=True
     )
-    evidence: Mapped[list["EvidenceChainRecord"]] = relationship(
+    evidence: Mapped[list[EvidenceChainRecord]] = relationship(
         back_populates="run", cascade="all, delete-orphan", passive_deletes=True
     )
 
@@ -127,9 +124,7 @@ class ResultRecord(Base):
     severity: Mapped[str] = mapped_column(Text, nullable=False, default="none")
     prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
     response_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    evaluation: Mapped[str] = mapped_column(
-        Text, nullable=False, default="{}"
-    )
+    evaluation: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     response_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     evidence_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     clause_refs: Mapped[str | None] = mapped_column(
@@ -162,10 +157,7 @@ class ResultRecord(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<ResultRecord id={self.id!r} scenario={self.scenario_id!r}"
-            f" status={self.status!r}>"
-        )
+        return f"<ResultRecord id={self.id!r} scenario={self.scenario_id!r} status={self.status!r}>"
 
 
 # ---------------------------------------------------------------------------
@@ -178,9 +170,7 @@ class EvidenceChainRecord(Base):
 
     __tablename__ = "evidence_chain"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     run_id: Mapped[str] = mapped_column(
         Text,
         ForeignKey("runs.id", ondelete="RESTRICT"),
@@ -198,9 +188,7 @@ class EvidenceChainRecord(Base):
     # Relationships
     run: Mapped[RunRecord] = relationship(back_populates="evidence")
 
-    __table_args__ = (
-        Index("idx_evidence_chain_timestamp", "timestamp"),
-    )
+    __table_args__ = (Index("idx_evidence_chain_timestamp", "timestamp"),)
 
     def __repr__(self) -> str:
         return f"<EvidenceChainRecord id={self.id} run_id={self.run_id!r}>"

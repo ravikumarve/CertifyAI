@@ -33,9 +33,7 @@ def hash_chain_link(prev_hash: str, current_hash: str) -> str:
     Returns:
         Hex-encoded SHA-256 of the concatenated hashes.
     """
-    return hashlib.sha256(
-        f"{prev_hash}{current_hash}".encode()
-    ).hexdigest()
+    return hashlib.sha256(f"{prev_hash}{current_hash}".encode()).hexdigest()
 
 
 def verify_chain(hashes: list[str]) -> bool:

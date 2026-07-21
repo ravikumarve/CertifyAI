@@ -13,7 +13,6 @@ import logging
 import pkgutil
 import sys
 from pathlib import Path
-from typing import Any
 
 from certifyai.engine.models import AttackCategory, AttackScenario
 from certifyai.engine.redteam.base import AttackPlugin
@@ -37,9 +36,7 @@ class PluginRegistry:
         self._plugins: dict[AttackCategory, AttackPlugin] = {}
         self._scenarios: list[AttackScenario] = []
         self._loaded = False
-        self._plugin_dirs: list[Path] = [
-            p.resolve() for p in (plugin_dirs or []) if p.exists()
-        ]
+        self._plugin_dirs: list[Path] = [p.resolve() for p in (plugin_dirs or []) if p.exists()]
 
     # ------------------------------------------------------------------
     # Public API
@@ -164,9 +161,7 @@ class PluginRegistry:
                         spec.loader.exec_module(module)
                         self._register_plugin_classes(module)
                     except Exception as e:
-                        logger.error(
-                            "Failed to load external plugin %s: %s", py_file.name, e
-                        )
+                        logger.error("Failed to load external plugin %s: %s", py_file.name, e)
             finally:
                 sys.path.pop(0)
 
@@ -196,9 +191,7 @@ class PluginRegistry:
                             plugin.category.value,
                         )
                 except Exception as e:
-                    logger.error(
-                        "Failed to instantiate plugin %s: %s", obj.__name__, e
-                    )
+                    logger.error("Failed to instantiate plugin %s: %s", obj.__name__, e)
 
 
 def _import_module(modname: str) -> object | None:
