@@ -4,14 +4,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard" },
-  { href: "/", label: "Run Attack" },
-  { href: "/results", label: "Results" },
-  { href: "/settings", label: "Settings" },
+  { href: "/", label: "Dashboard", id: "dashboard" },
+  { href: "/", label: "Run Attack", id: "run" },
+  { href: "/results", label: "Results", id: "results" },
+  { href: "/settings", label: "Settings", id: "settings" },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+
+  function isActive(item: typeof NAV_ITEMS[0]): boolean {
+    if (item.href === "/") {
+      // On /, highlight Run Attack (not Dashboard) to match mockup
+      return item.id === "run" && pathname === "/";
+    }
+    return pathname === item.href;
+  }
 
   return (
     <aside className="w-[260px] bg-[var(--bg-void)] border-r border-[var(--border-hard)] flex flex-col p-6 z-10">
@@ -22,19 +30,19 @@ export default function Sidebar() {
 
       <nav className="flex flex-col gap-1 flex-1">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
+          const active = isActive(item);
           return (
             <Link
-              key={item.label}
+              key={item.id}
               href={item.href}
               className={`flex items-center justify-between px-4 py-3 border border-transparent
                 text-[var(--text-muted)] font-medium text-[0.85rem] no-underline transition-all duration-200
                 font-[family-name:var(--font-mono)] uppercase tracking-wider
-                ${isActive ? "bg-[var(--bg-panel)] text-[var(--text-main)] border-[var(--border-focus)] border-l-[3px] border-l-[var(--acid-green)]" : ""}
+                ${active ? "bg-[var(--bg-panel)] text-[var(--text-main)] border-[var(--border-focus)] border-l-[3px] border-l-[var(--acid-green)]" : ""}
                 hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] hover:border-[var(--border-hard)]`}
             >
               <span>{item.label}</span>
-              {item.label === "Run Attack" && (
+              {item.id === "run" && (
                 <span className="text-[0.7rem] text-[var(--acid-green)]">LIVE</span>
               )}
             </Link>

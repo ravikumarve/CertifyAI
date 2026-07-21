@@ -47,7 +47,7 @@ export default function DashboardPage() {
             Attack Execution
           </div>
           <div className="text-[var(--text-muted)] text-[0.85rem] mt-1 font-[family-name:var(--font-mono)]">
-            Target: {data?.current_run?.provider ?? "—"} / {data?.current_run?.model ?? "—"}
+            Target: {stats?.provider ?? "—"} / {stats?.model ?? "—"}
           </div>
         </div>
         {error && (

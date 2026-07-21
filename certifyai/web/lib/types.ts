@@ -6,6 +6,9 @@ export interface DashboardData {
     total: number;
     running_time_secs: number;
     last_run_id: string | null;
+    provider: string;
+    model: string;
+    frameworks: string[];
     engine_status: string;
     vault_status: string;
     version: string;
