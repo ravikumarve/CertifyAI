@@ -11,8 +11,8 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Phase** | Phase 4b — CLI Rich UI & TUI Polish Complete |
-| **Code written** | ~5,000 lines |
+| **Phase** | Phase 5 — Web Dashboard (Next.js 16 + Tailwind v4 + recharts) |
+| **Code written** | ~5,000 lines Python + ~800 lines Next.js |
 | **Documents** | 17 docs in `docs/` (Waves 1-3) |
 | **Git repo** | https://github.com/ravikumarve/CertifyAI |
 | **Revenue** | $0 |
@@ -50,6 +50,71 @@
 ---
 
 ## 💾 Session Memory Ledger
+
+### [2026-07-21 22:00] — Phase 5: Web Dashboard Scaffold (Next.js 16 + Tailwind v4)
+- **State:** Success — 12 files created, Next.js builds clean, 82 Python tests still pass
+- **MCP Data Used:** direct file reads (certifyai_web_dashboard.html mockup, certifyai.db schema inspection)
+- **Agents Deployed:** Orchestrator (direct execution — all scaffolding, components, pages, API routes)
+- **Architectural Decision:** Using Python subprocess bridge (`lib/db_query.py`) instead of `better-sqlite3` — native module compilation times out on CPU-only laptop. The bridge reads SQLite directly using Python's sqlite3 and outputs JSON for Next.js API routes.
+- **Files Created (12):**
+  - `certifyai/web/app/globals.css` — Stealth Brutalism design system (CSS vars, components)
+  - `certifyai/web/app/layout.tsx` — Root layout with sidebar
+  - `certifyai/web/app/page.tsx` — Dashboard page (stats cards + attack table + vault log)
+  - `certifyai/web/app/results/page.tsx` — Results history page
+  - `certifyai/web/app/settings/page.tsx` — Settings page
+  - `certifyai/web/app/api/dashboard/route.ts` — API route (calls Python bridge)
+  - `certifyai/web/components/sidebar.tsx` — Sidebar nav (Dashboard, Run Attack, Results, Settings)
+  - `certifyai/web/components/stats-cards.tsx` — 4-card stat grid with accent colors
+  - `certifyai/web/components/attack-table.tsx` — Live attack stream table
+  - `certifyai/web/components/vault-log.tsx` — Evidence vault log panel
+  - `certifyai/web/lib/types.ts` — TypeScript interfaces
+  - `certifyai/web/lib/db_query.py` — Python SQLite → JSON bridge
+- **Build Status:** `npx next build` compiles clean. Start with `npm run dev` from `certifyai/web/`.
+- **Next Turn Directive:** Polish web dashboard, add recharts trend charts, or prepare Gumroad launch
+- **State:** Success — 1 fix applied, 82 tests passing, pushed `7a37ffb`
+- **MCP Data Used:** direct file reads (Textual Button source at .venv/lib/python3.12/site-packages/textual/widgets/_button.py), Python REPL tests of Content.from_text()
+- **Agents Deployed:** Orchestrator (direct execution — 1 import + 3 string→Text changes + 1 commit)
+- **Root Cause Found:** Textual's `Content.from_text()` parses `[` as Rich markup delimiters. The string `" [ RUN_BATTERY ] "` was parsed as a markup tag `[RUN_BATTERY]`, reducing visible plain text to just `'  '` (two spaces). The button rendered an empty label with a full border box — exactly matching the "blank box" symptom.
+- **Fix:** Wrapped all three button labels in `rich.text.Text()` objects: `Button(Text(" [ RUN_BATTERY ] "), ...)`. This bypasses `Content.from_text()` markup parsing, preserving brackets as literal characters.
+- **Why height:3→5 didn't help:** The label text was never being rendered at all — CSS height couldn't fix a content absence issue.
+- **Build Status:** Pushed to GitHub (`7a37ffb`)
+- **Next Turn Directive:** Phase 5 — Web Dashboard (Next.js) OR Gumroad prep
+- **State:** Success — 1 fix applied, 82 tests passing, pushed `734ea1a`
+- **MCP Data Used:** direct file reads (Textual Button.DEFAULT_CSS for line-pad inspection, certifyai/tui/app.py CSS block)
+- **Agents Deployed:** Orchestrator (direct execution — 1 CSS edit + 1 commit)
+- **Root Cause Found:** Button inherits `line-pad: 1` from Textual default CSS (1 row padding above and below text). With `height: 3` and `border: solid`, content area = 1 row, but the internal Label needs 3 rows (line-pad top + text + line-pad bottom). Label gets squeezed to 1 row, text disappears. `height: 5` gives 3 rows of content — exact fit.
+- **Diagnostic Path:** Tested Rich markup bracket theory (negative — Rich correctly treats `[ RUN_BATTERY ]` as plain text), then inspected Button.DEFAULT_CSS to find inherited `line-pad: 1` as the hidden constraint.
+- **Note:** Rich markup brackets `[...]` confirmed NOT the cause — Textual does NOT choke on them.
+- **Build Status:** Pushed to GitHub (`734ea1a`)
+- **Next Turn Directive:** Phase 5 — Web Dashboard (Next.js) OR Gumroad prep
+- **State:** Success — 2 fixes applied, 82 tests passing, pushed `35108cd`
+- **MCP Data Used:** direct file reads (certifyai/tui/app.py for clear() calls and CSS)
+- **Agents Deployed:** Orchestrator (direct execution — 2 edits + 1 commit)
+- **Fixes Applied:**
+  1. Changed `table.clear()` → `table.clear(columns=True)` in `_start_run()` and `on_attack_finished()` — DataTable.clear() only removes rows by default, so `add_columns()` was stacking duplicate columns on each subsequent run (confirmed 3× triple columns in screenshot)
+  2. Bumped `#run-buttons Button` width from 18→22 — `[ RUN_BATTERY ]` is 17 chars, border consumes 2 cols, leaving only 16 usable
+- **Note:** CSS height:3 fix for Buttons is correct in code but may appear stale if Textual process wasn't killed/restarted (no hot-reload for inline CSS)
+- **Build Status:** Pushed to GitHub (`35108cd`)
+- **Next Turn Directive:** Phase 5 — Web Dashboard (Next.js) OR Gumroad prep
+- **State:** Success — 2 fixes applied, 82 tests passing, pushed `152a1f0`
+- **MCP Data Used:** direct file reads (certifyai/tui/app.py CSS block)
+- **Agents Deployed:** Orchestrator (direct execution — 2 CSS/logic edits + 1 commit)
+- **Fixes Applied:**
+  1. Added `height: 3;` to base `Button` CSS — same root cause as tab fix; full solid border was consuming default height, making RUN_BATTERY/DRY_RUN/HALT/Save buttons invisible
+  2. Set `show_percentage=False` on ProgressBar — bar was still showing built-in "0%" label below custom "#run-progress-text" Static
+- **Build Status:** Pushed to GitHub (`152a1f0`)
+- **Next Turn Directive:** Phase 5 — Web Dashboard (Next.js) OR Gumroad prep OR whatever is next
+- **State:** Success — 5 fixes applied, 82 tests passing, pushed `7b7dca9`
+- **MCP Data Used:** direct file reads (certifyai/tui/app.py for CSS and compose methods)
+- **Agents Deployed:** Orchestrator (direct execution — 4 CSS/logic edits + 1 commit)
+- **Fixes Applied:**
+  1. Added `height: 3;` to `Tabs Tab` CSS — tab text was invisible because border consumed all default height
+  2. Changed `show_eta=True` → `show_eta=False` on ProgressBar — eliminated duplicate progress readout (custom `#run-progress-text` + ProgressBar's built-in label were stacking)
+  3. Added `border_title = "EXECUTION_CONFIG"` on `#run-config-summary` Container — uses Textual's native border-title rendering instead of trying to fake absolute positioning
+  4. Tab labels uppercased (`DASHBOARD`, `RUN_ATTACK`, `RESULTS`, `SETTINGS`) per mockup
+  5. Button labels wrapped in brackets (`[ RUN_BATTERY ]`, `[ DRY_RUN ]`, `[ HALT ]`) per mockup
+- **Build Status:** Pushed to GitHub (`7b7dca9`)
+- **Next Turn Directive:** Phase 5 — Begin Web Dashboard (Next.js 14 + Tailwind + recharts) OR Gumroad prep (pricing page, commercial license bundle) OR other direction
 
 ### [2026-07-21 20:00] — Phase 4b: CLI Rich UI & TUI Polish Complete
 - **State:** Success — 4 files modified, 88 tests passing, Rich+TUI end-to-end verified

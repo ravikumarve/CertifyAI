@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/* ── Stealth Brutalism Design System ── */
+
+:root {
+  --bg-void: #000000;
+  --bg-surface: #090909;
+  --bg-panel: #121212;
+  --border-hard: #222222;
+  --border-focus: #444444;
+  --acid-green: #D4FF00;
+  --acid-dim: rgba(212, 255, 0, 0.1);
+  --electric-red: #FF0055;
+  --electric-dim: rgba(255, 0, 85, 0.1);
+  --cyber-blue: #00E5FF;
+  --text-main: #FFFFFF;
+  --text-muted: #888888;
+  --text-faint: #444444;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background-color: var(--bg-void);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Brutalist Card ── */
+.brut-card {
+  background: var(--bg-void);
+  border: 1px solid var(--border-hard);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.brut-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--border-focus);
+}
+.brut-card.active::before { background: var(--acid-green); }
+.brut-card.danger::before { background: var(--electric-red); }
+.brut-card.success::before { background: var(--cyber-blue); }
+
+/* ── Data Table ── */
+.brut-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.8rem; text-align: left; }
+.brut-table th { color: var(--text-muted); font-weight: 400; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-hard); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 1px; background: var(--bg-panel); }
+.brut-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-hard); color: var(--text-main); }
+.brut-table tbody tr:hover td { background: var(--bg-panel); }
+
+/* ── Status Text ── */
+.status-pass { color: var(--acid-green); font-weight: 700; text-transform: uppercase; }
+.status-fail { color: var(--electric-red); font-weight: 700; text-transform: uppercase; }
+.status-run { color: var(--cyber-blue); font-weight: 700; text-transform: uppercase; animation: blink 1s infinite; }
+
+@keyframes blink { 50% { opacity: 0.3; } }
+
+/* ── Button Base ── */
+.brut-btn {
+  padding: 0.6rem 1.25rem;
+  font-weight: 700;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid var(--border-hard);
+  background: var(--bg-void);
+  color: var(--text-main);
+}
+.brut-btn:hover { background: var(--bg-panel); border-color: var(--border-focus); }
+.brut-btn-primary { background: var(--acid-green); color: var(--bg-void); border-color: var(--acid-green); }
+.brut-btn-primary:hover { background: #E2FF4D; border-color: #E2FF4D; }
+.brut-btn-danger { background: var(--electric-red); color: var(--text-main); border-color: var(--electric-red); }
