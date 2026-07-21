@@ -770,7 +770,7 @@ class CertifyAIApp(App):
     }
 
     Button {
-        height: 3;
+        height: 5;
         background: #090909;
         color: #FFFFFF;
         border: solid #222222;
