@@ -231,11 +231,11 @@ class RunAttackContent(Vertical):
             yield Static("MODEL: —", id="run-cfg-model")
             yield Static("CONCURRENCY: —", id="run-cfg-concurrency")
         with Horizontal(id="run-buttons"):
-            yield Button(" RUN_BATTERY ", id="run-start", variant="primary")
-            yield Button(" DRY_RUN ", id="run-dry", variant="default")
-            yield Button(" HALT ", id="run-halt")
+            yield Button(" [ RUN_BATTERY ] ", id="run-start", variant="primary")
+            yield Button(" [ DRY_RUN ] ", id="run-dry", variant="default")
+            yield Button(" [ HALT ] ", id="run-halt")
         yield Static(id="run-progress-text", classes="status-text")
-        yield ProgressBar(id="run-progress", total=100, show_eta=True)
+        yield ProgressBar(id="run-progress", total=100, show_eta=False)
         yield Static(id="run-elapsed")
         yield Static(id="run-current")
         yield Static(id="run-status", classes="section-title")
@@ -253,6 +253,7 @@ class RunAttackContent(Vertical):
     def _load_config_summary(self) -> None:
         cfg = load_config()
         prov = cfg.get("provider", {})
+        self.query_one("#run-config-summary", Container).border_title = "EXECUTION_CONFIG"
         self.query_one("#run-cfg-provider", Static).update(
             f"PROVIDER: [bold]{prov.get('name', '—').upper()}[/bold]"
         )
@@ -888,6 +889,7 @@ class CertifyAIApp(App):
     }
 
     Tabs Tab {
+        height: 3;
         background: #090909;
         color: #888888;
         border: solid #222222;
@@ -969,13 +971,13 @@ class CertifyAIApp(App):
     def compose(self) -> ComposeResult:
         yield Header()
         with TabbedContent(initial="dashboard"):
-            with TabPane("Dashboard", id="dashboard"):
+            with TabPane("DASHBOARD", id="dashboard"):
                 yield DashboardContent()
-            with TabPane("Run Attack", id="run"):
+            with TabPane("RUN_ATTACK", id="run"):
                 yield RunAttackContent()
-            with TabPane("Results", id="results"):
+            with TabPane("RESULTS", id="results"):
                 yield ResultsContent()
-            with TabPane("Settings", id="settings"):
+            with TabPane("SETTINGS", id="settings"):
                 yield SettingsContent()
         yield Footer()
 
