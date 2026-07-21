@@ -235,7 +235,7 @@ class RunAttackContent(Vertical):
             yield Button(" [ DRY_RUN ] ", id="run-dry", variant="default")
             yield Button(" [ HALT ] ", id="run-halt")
         yield Static(id="run-progress-text", classes="status-text")
-        yield ProgressBar(id="run-progress", total=100, show_eta=False)
+        yield ProgressBar(id="run-progress", total=100, show_percentage=False, show_eta=False)
         yield Static(id="run-elapsed")
         yield Static(id="run-current")
         yield Static(id="run-status", classes="section-title")
@@ -770,6 +770,7 @@ class CertifyAIApp(App):
     }
 
     Button {
+        height: 3;
         background: #090909;
         color: #FFFFFF;
         border: solid #222222;
