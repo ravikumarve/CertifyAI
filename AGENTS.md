@@ -51,6 +51,27 @@
 
 ## 💾 Session Memory Ledger
 
+### [2026-07-21 16:30] — Engine Core Phase 1 Complete (Models + CLI + Evidence + Compliance + 44 Tests)
+- **State**: Success — Phase 1 implementation complete. 26 new files created.
+- **MCP Data Used**: code_tree (AST verification for existing file structure), direct file reads (models.py, runner.py for cross-reference consistency)
+- **Agents Deployed**: Orchestrator (direct execution — wrote all engine core files, CLI, tests)
+- **Architectural Decisions**:
+  - `AttackResult` requires `category` and `severity` as mandatory fields (reflects real model schema)
+  - Evidence vault uses append-only SHA-256 hash chain with per-file `.hash` sidecar files
+  - Compliance mapper supports pluggable YAML framework definitions in a `frameworks/` dir
+  - CLI uses `RunConfig` + `ProviderConfig` (not the deprecated `AttackConfig`)
+  - MockLLMClient returns predetermined responses for dry-run testing
+- **Files Created (26)**:
+  - `certifyai/engine/evidence/__init__.py`, `hasher.py`, `vault.py`
+  - `certifyai/engine/compliance/__init__.py`, `mapper.py`
+  - `certifyai/engine/compliance/frameworks/eu_ai_act.yaml`, `soc2.yaml`, `nist_ai_rmf.yaml`
+  - `certifyai/cli/__init__.py`, `main.py`
+  - `certifyai/tui/__init__.py`, `app.py`
+  - `tests/__init__.py`, `conftest.py`, `test_models.py`, `test_evidence.py`, `test_compliance.py`
+- **Test Results**: 44/44 tests passing — models (17), evidence (10), compliance (11), hasher (6)
+- **Build Status**: `pip install -e ".[dev]"` works in venv. CLI `--help` responds. 52 ruff warnings (mostly line-length) — not blocking for alpha.
+- **Next Turn Directive**: Phase 2 — Plugin system completion (scenario registry + attack plugin template), LiteLLM integration tests with real provider, or begin Web Dashboard (Next.js)
+
 ### [2026-07-21 15:00] — GitHub Repository Created & Initial Commit Pushed
 - **State:** Success — Repo created at `https://github.com/ravikumarve/CertifyAI`
 - **Description:** "Continuous compliance engine for AI runtimes. Self-hosted CLI + TUI + Web Dashboard that tests LLMs against 30+ attack scenarios and generates audit-ready evidence for EU AI Act, SOC 2 Type II, and NIST AI RMF. No subscription. No cloud dependency. Bring your own LLM key."

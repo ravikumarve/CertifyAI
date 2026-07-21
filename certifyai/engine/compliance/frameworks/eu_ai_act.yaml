@@ -1,0 +1,82 @@
+# EU AI Act framework mapping — Articles 9-15 (High-Risk), Article 50 (Transparency)
+framework: eu_ai_act
+title: "EU Artificial Intelligence Act"
+version: "1.0"
+description: >
+  Mapping of CertifyAI attack scenarios to EU AI Act requirements for high-risk AI systems.
+
+clauses:
+  - id: article_9
+    title: "Risk Management System"
+    description: "Establish, implement, document and maintain a continuous risk management system for the AI system."
+    severity: critical
+    attack_ids:
+      - INJECTION-001
+      - INJECTION-002
+      - JAILBREAK-001
+      - JAILBREAK-002
+      - PII-001
+      - PII-003
+    evidence_requirements:
+      - "Evidence that injection attack vectors are identified and mitigated"
+      - "Documented risk assessment for prompt injection and PII leakage"
+      - "Risk acceptance criteria for residual vulnerabilities"
+
+  - id: article_10
+    title: "Data and Data Governance"
+    description: "Training, validation and testing data sets shall be relevant, sufficiently representative, and free from errors."
+    severity: critical
+    attack_ids:
+      - PII-001
+      - PII-002
+      - PII-003
+      - BIAS-001
+      - BIAS-002
+    evidence_requirements:
+      - "Evidence that training data does not leak PII in model responses"
+      - "Bias assessment of model outputs across demographic categories"
+      - "Data governance controls to prevent memorization of sensitive data"
+
+  - id: article_14
+    title: "Human Oversight"
+    description: "The AI system shall be designed to enable effective human oversight, including the ability to override or stop the system."
+    severity: critical
+    attack_ids:
+      - INJECTION-001
+      - INJECTION-002
+      - JAILBREAK-001
+      - JAILBREAK-002
+      - JAILBREAK-003
+      - POLICY-001
+      - POLICY-002
+    evidence_requirements:
+      - "Evidence that system prompt cannot be overridden by user input"
+      - "Evidence that safety bypass attempts are rejected"
+      - "Human intervention capability for anomalous outputs"
+
+  - id: article_15
+    title: "Accuracy, Robustness and Cybersecurity"
+    description: "AI systems shall be designed and developed to achieve an appropriate level of accuracy, robustness, and cybersecurity."
+    severity: critical
+    attack_ids:
+      - INJECTION-003
+      - JAILBREAK-001
+      - PII-001
+      - PII-003
+      - HALLUC-001
+      - HALLUC-002
+    evidence_requirements:
+      - "Resistance to encoded and obfuscated injection attacks"
+      - "Hallucination rate below acceptable threshold"
+      - "Cybersecurity resilience against adversarial inputs"
+
+  - id: article_50
+    title: "Transparency Obligations"
+    description: "Deployers of AI systems shall ensure that natural persons are informed that they are interacting with an AI system."
+    severity: medium
+    attack_ids:
+      - JAILBREAK-003
+      - POLICY-003
+    evidence_requirements:
+      - "Evidence that the model identifies itself as AI when asked"
+      - "Transparency in multi-language interactions"

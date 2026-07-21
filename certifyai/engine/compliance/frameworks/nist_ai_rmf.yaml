@@ -1,0 +1,76 @@
+# NIST AI Risk Management Framework mapping
+framework: nist_ai_rmf
+title: "NIST AI Risk Management Framework"
+version: "1.0"
+description: >
+  Mapping of CertifyAI attack scenarios to the NIST AI RMF core functions:
+  Govern, Map, Measure, Manage.
+
+clauses:
+  - id: govern.1
+    title: "Govern — Risk Management Processes"
+    description: "Establish organizational processes for AI risk management."
+    severity: high
+    attack_ids:
+      - INJECTION-001
+      - JAILBREAK-001
+      - POLICY-001
+    evidence_requirements:
+      - "Documented risk management process covering AI red-teaming"
+      - "Evidence of continuous risk assessment for AI safety"
+
+  - id: map.1
+    title: "Map — Context and Use Case"
+    description: "Identify the specific context and intended use of the AI system."
+    severity: medium
+    attack_ids:
+      - INJECTION-002
+      - JAILBREAK-003
+    evidence_requirements:
+      - "Understanding of AI system boundaries and attack surface"
+      - "Documentation of deployment context for risk assessment"
+
+  - id: measure.1
+    title: "Measure — Test and Evaluation"
+    description: "Conduct testing and evaluation to validate AI system performance and risks."
+    severity: critical
+    attack_ids:
+      - INJECTION-001
+      - INJECTION-002
+      - JAILBREAK-001
+      - JAILBREAK-002
+      - PII-001
+      - PII-003
+      - HALLUC-001
+      - HALLUC-002
+      - BIAS-001
+      - BIAS-002
+    evidence_requirements:
+      - "Comprehensive red-teaming results across multiple attack categories"
+      - "Quantified measures of AI system robustness and safety"
+      - "Replicable test procedures for independent verification"
+
+  - id: measure.2
+    title: "Measure — Risk Tracking"
+    description: "Track identified risks and monitor their evolution over time."
+    severity: high
+    attack_ids:
+      - INJECTION-003
+      - JAILBREAK-003
+      - HALLUC-003
+    evidence_requirements:
+      - "Continuous tracking of hallucination rates and injection success"
+      - "Trend analysis of risk metrics over time"
+      - "Alert thresholds for risk metric deviations"
+
+  - id: manage.1
+    title: "Manage — Risk Response"
+    description: "Implement risk treatment plans and monitor their effectiveness."
+    severity: high
+    attack_ids:
+      - POLICY-001
+      - POLICY-002
+      - POLICY-003
+    evidence_requirements:
+      - "Evidence of policy enforcement against identified risks"
+      - "Mitigation effectiveness testing for known attack vectors"

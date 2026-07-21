@@ -1,0 +1,55 @@
+# SOC 2 Type II framework mapping — Common Criteria (CC)
+framework: soc2
+title: "SOC 2 Type II — Common Criteria"
+version: "1.0"
+description: >
+  Mapping of CertifyAI attack scenarios to SOC 2 Common Criteria for trust services.
+
+clauses:
+  - id: cc3
+    title: "Risk Assessment"
+    description: "The entity identifies and assesses risks that could affect the achievement of its objectives."
+    severity: high
+    attack_ids:
+      - INJECTION-001
+      - JAILBREAK-001
+      - PII-003
+    evidence_requirements:
+      - "Risk assessment covering AI-specific attack vectors"
+      - "Documented threat landscape for LLM deployment"
+
+  - id: cc6
+    title: "Logical and Physical Access Controls"
+    description: "The entity restricts logical access to systems and data to authorized personnel."
+    severity: critical
+    attack_ids:
+      - INJECTION-001
+      - PII-001
+      - PII-003
+    evidence_requirements:
+      - "Evidence that unauthorized access via injection is prevented"
+      - "PII leakage testing results for access control validation"
+
+  - id: cc6_7
+    title: "Data Disposal"
+    description: "The entity disposes of data in a manner that prevents unauthorized access."
+    severity: high
+    attack_ids:
+      - PII-001
+      - PII-002
+      - PII-003
+    evidence_requirements:
+      - "Evidence that model does not retain or expose disposed data"
+      - "PII leakage test results as part of data disposal verification"
+
+  - id: cc7
+    title: "System Monitoring"
+    description: "The entity monitors its systems for anomalies and security events."
+    severity: high
+    attack_ids:
+      - INJECTION-002
+      - JAILBREAK-002
+      - POLICY-001
+    evidence_requirements:
+      - "Continuous monitoring of AI system inputs for injection attempts"
+      - "Alerting on anomalous interaction patterns"
