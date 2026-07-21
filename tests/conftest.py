@@ -1,9 +1,27 @@
-"""pytest configuration and shared fixtures."""
+"""pytest configuration and shared fixtures.
+
+Automatically loads environment variables from the project root .env file
+so integration tests can access API keys.
+"""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from _pytest.config.argparsing import Parser
+
+# ---------------------------------------------------------------------------
+# Auto-load .env at import time (runs before any test collection)
+# ---------------------------------------------------------------------------
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+if _env_path.exists():
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(_env_path, override=False)
+    except ImportError:
+        pass  # python-dotnet not installed — env vars must be set manually
 
 
 def pytest_addoption(parser: Parser) -> None:

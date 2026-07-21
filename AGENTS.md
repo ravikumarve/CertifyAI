@@ -51,6 +51,47 @@
 
 ## 💾 Session Memory Ledger
 
+### [2026-07-21 19:15] — Phase 3: LiteLLM Integration Tests with NVIDIA NIM
+- **State**: Success — 6 integration tests passing against live NVIDIA NIM API
+- **MCP Data Used**: direct file reads (lite_llm.py, models.py for API config)
+- **Agents Deployed**: Orchestrator (direct execution — conftest dotenv loading, integration test file)
+- **Architectural Decisions**:
+  - `.env` file auto-loaded via `python-dotenv` in `conftest.py` at module import time
+  - Integration tests guarded by `--run-integration` flag + `pytest.mark.integration`
+  - NVIDIA NIM free tier rate limits handled gracefully (tests skip on 429)
+  - Only `prompt_injection` category used for attack-run tests (3 scenarios, 2 concurrency)
+- **Files Created (1)**:
+  - `tests/test_integration_llm.py` — 6 tests (basic completion, attack execution, performance)
+- **Files Modified (2)**:
+  - `tests/conftest.py` — Added automatic `.env` loading via `python-dotenv`
+  - `.env` — Local only (gitignored), contains NVIDIA NIM API key
+- **Test Results**: 71/71 passing — unit (65) + integration (6)
+- **Build Status**: Pushed to GitHub (after next commit)
+- **Next Turn Directive**: Phase 4 — Web Dashboard (Next.js 14 + Tailwind + recharts), OR SQLite database wiring
+
+### [2026-07-21 18:30] — Phase 2: Plugin System Complete (6 categories, 18 scenarios, external loading)
+- **State**: Success — 7 new/changed files, 65/65 tests passing
+- **MCP Data Used**: code_tree (existing plugin structure), direct file reads (existing plugins for pattern matching)
+- **Agents Deployed**: Orchestrator (direct execution — all plugin code, registry rewrite, CLI update, tests)
+- **Architectural Decisions**:
+  - 6 attack categories × 3 scenarios each = 18 built-in scenarios
+  - External plugins load from user-specified directories via `--plugin-dir` (multiple allowed)
+  - External plugins append scenarios to built-in ones (no override — all scenarios run)
+  - `plugin_template.py` lives in the package but is excluded from production loading
+  - `list-categories` CLI command for discovering available attacks
+- **Files Created (5)**:
+  - `certifyai/engine/redteam/policy_violation.py` — 3 scenarios (harmful content, ToS, impersonation)
+  - `certifyai/engine/redteam/hallucination.py` — 3 scenarios (factual grounding, citations, statistics)
+  - `certifyai/engine/redteam/bias.py` — 3 scenarios (stereotyping, allocation, cultural)
+  - `certifyai/engine/redteam/plugin_template.py` — Annotated template with evaluation recipes
+  - `tests/test_plugins.py` — 21 tests (registry, loading, external, integrity)
+- **Files Modified (2)**:
+  - `certifyai/engine/registry.py` — Added `_load_external_plugins()`, `reload()`, `list_categories()`
+  - `certifyai/cli/main.py` — Added `--plugin-dir`, `list-categories` command
+- **Test Results**: 65/65 passing — models (17), evidence (10), compliance (11), plugins (21), hasher (6)
+- **Build Status**: Pushed to GitHub (`4729cc6`)
+- **Next Turn Directive**: Phase 3 — LiteLLM integration tests with real provider, OR begin Web Dashboard (Next.js 14 + Tailwind + recharts), OR SQLite database wiring
+
 ### [2026-07-21 16:30] — Engine Core Phase 1 Complete (Models + CLI + Evidence + Compliance + 44 Tests)
 - **State**: Success — Phase 1 implementation complete. 26 new files created.
 - **MCP Data Used**: code_tree (AST verification for existing file structure), direct file reads (models.py, runner.py for cross-reference consistency)
