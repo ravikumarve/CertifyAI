@@ -49,7 +49,6 @@ def query(db_path: str, mode: str) -> dict:
 
 
 def _parse_config_json(config_json: str | None) -> dict:
-    """Parse the JSON config blob stored in runs table."""
     if not config_json:
         return {}
     try:
@@ -59,7 +58,6 @@ def _parse_config_json(config_json: str | None) -> dict:
 
 
 def _dashboard(cursor) -> dict:
-    # Latest run
     cursor.execute(
         "SELECT id, status, started_at, finished_at, config_json, "
         "total_attacks, passed, failed, errors, skipped, overall_score, "
@@ -68,15 +66,13 @@ def _dashboard(cursor) -> dict:
     )
     latest = cursor.fetchone()
 
-    # Config for the latest run
     cfg = _parse_config_json(latest["config_json"] if latest else None)
     provider_info = cfg.get("provider", {})
-    provider_name = provider_info.get("name", "—")
+    provider_name = provider_info.get("provider", "—")
     model_name = provider_info.get("model", "—")
     frameworks_list = cfg.get("frameworks", [])
     concurrency_val = cfg.get("concurrency", 3)
 
-    # Results for latest run
     recent_results = []
     if latest:
         cursor.execute(
@@ -87,14 +83,12 @@ def _dashboard(cursor) -> dict:
         )
         recent_results = cursor.fetchall()
 
-    # Vault log
     cursor.execute(
         "SELECT id, run_id, previous_hash, run_hash, timestamp, metadata, verified_at "
         "FROM evidence_chain ORDER BY timestamp DESC LIMIT 50"
     )
     vault_entries = cursor.fetchall()
 
-    # Aggregate stats across all runs
     cursor.execute(
         "SELECT COALESCE(SUM(passed), 0) as total_passed, "
         "COALESCE(SUM(failed), 0) as total_failed, "
@@ -118,7 +112,6 @@ def _dashboard(cursor) -> dict:
     conn = cursor.connection
     conn.close()
 
-    # Calculate elapsed time for current/last run
     elapsed = 0
     if latest:
         if latest["finished_at"]:
@@ -139,7 +132,7 @@ def _dashboard(cursor) -> dict:
 
     return {
         "stats": {
-            "score": latest["overall_score"] if latest else None,
+            "score": round(latest["overall_score"] * 100, 1) if latest and latest["overall_score"] is not None else None,
             "passed": aggr["total_passed"] if aggr else 0,
             "failed": aggr["total_failed"] if aggr else 0,
             "total": aggr["total_attacks"] if aggr else 0,
@@ -165,14 +158,16 @@ def _runs(cursor) -> dict:
         "FROM runs ORDER BY created_at DESC LIMIT 100"
     )
     runs_data = cursor.fetchall()
-    # Parse provider/model from config_json
     for r in runs_data:
         cfg = _parse_config_json(r.get("config_json"))
         prov = cfg.get("provider", {})
-        r["provider"] = prov.get("name", "—")
+        r["provider"] = prov.get("provider", "—")
         r["model"] = prov.get("model", "—")
         r["score"] = r.pop("overall_score", None)
         r["total"] = r.pop("total_attacks", 0)
+        # Also scale score for display
+        if r["score"] is not None:
+            r["score"] = round(r["score"] * 100, 1)
     conn = cursor.connection
     conn.close()
     return {"runs": runs_data}
@@ -181,15 +176,24 @@ def _runs(cursor) -> dict:
 def _config(cursor) -> dict:
     cursor.execute("SELECT key, value, category, description FROM config ORDER BY category, key")
     rows = cursor.fetchall()
-    config = {}
-    for r in rows:
-        cat = r["category"]
-        if cat not in config:
-            config[cat] = {}
-        config[cat][r["key"]] = r["value"]
-    conn = cursor.connection
-    conn.close()
-    return {"config": config}
+    if rows:
+        config_from_db = {}
+        for r in rows:
+            cat = r["category"]
+            if cat not in config_from_db:
+                config_from_db[cat] = {}
+            config_from_db[cat][r["key"]] = r["value"]
+        return {"config": config_from_db, "source": "db"}
+
+    cursor.execute(
+        "SELECT config_json FROM runs ORDER BY created_at DESC LIMIT 1"
+    )
+    latest_run = cursor.fetchone()
+    if latest_run and latest_run.get("config_json"):
+        cfg = _parse_config_json(latest_run["config_json"])
+        return {"config": cfg, "source": "run_config"}
+
+    return {"config": {}, "source": "none"}
 
 
 if __name__ == "__main__":

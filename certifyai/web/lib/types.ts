@@ -30,16 +30,24 @@ export interface AttackResult {
   id: string;
   run_id: string;
   scenario_id: string;
+  attack_name: string;
   category: string;
   severity: string;
   status: string;
   response_time_ms: number | null;
-  framework: string;
+  framework?: string;
+  evaluation?: string;
 }
 
 export interface VaultEntry {
+  id: string;
+  run_id: string;
+  previous_hash: string;
+  run_hash: string;
   timestamp: string;
-  message: string;
+  metadata: string;
+  verified_at: string;
+  message?: string;
   hash?: string;
   level: string;
 }
@@ -50,9 +58,11 @@ export interface RunSummary {
   passed: number;
   failed: number;
   errors: number;
+  skipped: number;
   total: number;
   score: number | null;
   created_at: string;
   provider: string;
   model: string;
+  engine_version?: string;
 }

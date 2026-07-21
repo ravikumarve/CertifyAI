@@ -16,7 +16,7 @@
 | **Documents** | 17 docs in `docs/` (Waves 1-3) |
 | **Git repo** | https://github.com/ravikumarve/CertifyAI |
 | **Revenue** | $0 |
-| **Next action** | Phase 5 — Begin Web Dashboard (Next.js 14 + Tailwind + recharts) OR Gumroad prep |
+| **Next action** | Push Phase 5 commit + `npm run build` + deploy dev server, OR Gumroad launch prep (pricing page, commercial license bundle, README polish) |
 
 ---
 
@@ -51,27 +51,22 @@
 
 ## 💾 Session Memory Ledger
 
-### [2026-07-21 22:00] — Phase 5: Web Dashboard Scaffold (Next.js 16 + Tailwind v4)
-- **State:** Success — 12 files created, Next.js builds clean, 82 Python tests still pass
-- **MCP Data Used:** direct file reads (certifyai_web_dashboard.html mockup, certifyai.db schema inspection)
-- **Agents Deployed:** Orchestrator (direct execution — all scaffolding, components, pages, API routes)
-- **Architectural Decision:** Using Python subprocess bridge (`lib/db_query.py`) instead of `better-sqlite3` — native module compilation times out on CPU-only laptop. The bridge reads SQLite directly using Python's sqlite3 and outputs JSON for Next.js API routes.
-- **Files Created (12):**
-  - `certifyai/web/app/globals.css` — Stealth Brutalism design system (CSS vars, components)
-  - `certifyai/web/app/layout.tsx` — Root layout with sidebar
-  - `certifyai/web/app/page.tsx` — Dashboard page (stats cards + attack table + vault log)
-  - `certifyai/web/app/results/page.tsx` — Results history page
-  - `certifyai/web/app/settings/page.tsx` — Settings page
-  - `certifyai/web/app/api/dashboard/route.ts` — API route (calls Python bridge)
-  - `certifyai/web/components/sidebar.tsx` — Sidebar nav (Dashboard, Run Attack, Results, Settings)
-  - `certifyai/web/components/stats-cards.tsx` — 4-card stat grid with accent colors
-  - `certifyai/web/components/attack-table.tsx` — Live attack stream table
-  - `certifyai/web/components/vault-log.tsx` — Evidence vault log panel
-  - `certifyai/web/lib/types.ts` — TypeScript interfaces
-  - `certifyai/web/lib/db_query.py` — Python SQLite → JSON bridge
-- **Build Status:** `npx next build` compiles clean. Start with `npm run dev` from `certifyai/web/`.
-- **Next Turn Directive:** Polish web dashboard, add recharts trend charts, or prepare Gumroad launch
-- **State:** Success — 1 fix applied, 82 tests passing, pushed `7a37ffb`
+### [2026-07-21 23:30] — Phase 5: Web Dashboard Polish (recharts Trend + Results Search/Filter)
+- **State:** Success — 6 files modified/created, build compiles clean, 7 routes verified live
+- **MCP Data Used:** direct file reads (all 12 source files across app/, components/, lib/)
+- **Agents Deployed:** Orchestrator (direct execution — trend chart component, results filter, polish pass)
+- **Changes Made:**
+  - **New: `components/trend-chart.tsx`** — recharts `LineChart` with acid-green score trend over time, dark-themed CartesianGrid, tooltip, dynamic Y axis 0-100%, auto-fetches from `/api/dashboard?mode=runs`
+  - **Updated: `app/page.tsx`** — integrated TrendChart below StatsCards, added spinner loading state, RETRY button on error, response_time_ms display on recent results table
+  - **Updated: `app/results/page.tsx`** — added text search (by ID/provider/model), status filter dropdown (All/Pass/Fail/Running/Error), sort by date/score↑/score↓, StatusBadge component, "X of Y runs" count, empty filter state
+  - **Updated: `app/settings/page.tsx`** — dynamic section rendering from API, shows config source badge, flattened nested config entries, spinner loading, empty state
+  - **Updated: `components/sidebar.tsx`** — nav items with active dot indicator + glow, color-coded status dots (green/red/grey), cleaner status panel layout
+  - **Updated: `components/attack-table.tsx`** — added Response column (ms), spinning indicator during execution, colSpan=5
+  - **Updated: `components/vault-log.tsx`** — improved time formatting, color-coded log levels (FAIL=red, WARN=orange), adaptive font-size for long hashes
+  - **Updated: `lib/types.ts`** — added `attack_name`, `evaluation` fields to AttackResult; added `skipped`, `engine_version` to RunSummary; updated VaultEntry with all DB columns
+  - **Updated: `app/globals.css`** — added `.loading-spinner`, `.brut-badge`, `.brut-input` utility classes
+- **Build Status:** `npx next build` compiles clean (zero TS/ESLint errors). 7 routes: `/`, `/run`, `/results`, `/settings` (static) + `/api/dashboard` (dynamic). All live-verified HTTP 200.
+- **Next Turn Directive:** Push Phase 5 commit + `npm run build` + deploy dev server, OR Gumroad launch prep (pricing page, commercial license bundle, README polish)
 - **MCP Data Used:** direct file reads (Textual Button source at .venv/lib/python3.12/site-packages/textual/widgets/_button.py), Python REPL tests of Content.from_text()
 - **Agents Deployed:** Orchestrator (direct execution — 1 import + 3 string→Text changes + 1 commit)
 - **Root Cause Found:** Textual's `Content.from_text()` parses `[` as Rich markup delimiters. The string `" [ RUN_BATTERY ] "` was parsed as a markup tag `[RUN_BATTERY]`, reducing visible plain text to just `'  '` (two spaces). The button rendered an empty label with a full border box — exactly matching the "blank box" symptom.

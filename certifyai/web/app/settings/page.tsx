@@ -2,34 +2,47 @@
 
 import { useEffect, useState } from "react";
 
-interface Config {
-  provider?: { name?: string; model?: string; api_key?: string };
-  paths?: { vault?: string; database?: string };
-  frameworks?: string[];
-  attack_categories?: string | null;
+interface ConfigResponse {
+  config: Record<string, Record<string, string>>;
+  source: string;
 }
 
 export default function SettingsPage() {
-  const [config, setConfig] = useState<Config | null>(null);
+  const [configResp, setConfigResp] = useState<ConfigResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load config from API
     async function loadConfig() {
       try {
         const res = await fetch("/api/dashboard?mode=config");
         if (res.ok) {
           const json = await res.json();
-          if (!json.error) setConfig(json.config ?? json);
+          if (!json.error) setConfigResp(json);
         }
       } catch {
-        // Silently fail — config loading is best-effort
+        // best-effort
       } finally {
         setLoading(false);
       }
     }
     loadConfig();
   }, []);
+
+  const config = configResp?.config ?? {};
+
+  // Flatten nested config for display
+  const allEntries: { section: string; key: string; value: string }[] = [];
+  for (const [section, fields] of Object.entries(config)) {
+    if (typeof fields === "object" && fields !== null) {
+      for (const [key, value] of Object.entries(fields)) {
+        allEntries.push({ section, key, value: String(value) });
+      }
+    } else {
+      allEntries.push({ section: "general", key: section, value: String(fields) });
+    }
+  }
+
+  const sections = [...new Set(allEntries.map((e) => e.section))];
 
   return (
     <>
@@ -39,72 +52,71 @@ export default function SettingsPage() {
             Settings
           </div>
           <div className="text-[var(--text-muted)] text-[0.85rem] mt-1 font-[family-name:var(--font-mono)]">
-            Provider & system configuration
+            Provider &amp; system configuration
+            {configResp?.source && configResp.source !== "none" && (
+              <span className="ml-2 text-[0.7rem] px-2 py-0.5 border border-[var(--border-hard)] uppercase">
+                Source: {configResp.source}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center text-[var(--text-muted)] font-[family-name:var(--font-mono)]">
-          Loading config...
+        <div className="flex items-center justify-center text-[var(--text-muted)] font-[family-name:var(--font-mono)] py-16">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-6 h-6 border-2 border-[var(--border-hard)] border-t-[var(--acid-green)] rounded-full animate-spin" />
+            <span className="text-[0.8rem]">Loading config...</span>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4">
-          {/* Provider Config */}
-          <div className="brut-card">
-            <div className="text-[0.75rem] text-[var(--text-muted)] font-[family-name:var(--font-mono)] uppercase tracking-wider mb-6">
-              Provider Configuration
-            </div>
-            <div className="space-y-4">
-              <ConfigField label="Provider" value={config?.provider?.name ?? "—"} />
-              <ConfigField label="Model" value={config?.provider?.model ?? "—"} />
-              <ConfigField
-                label="API Key"
-                value={config?.provider?.api_key ? "••••••••" : "—"}
-              />
-            </div>
-          </div>
+          {sections.length === 0 ? (
+            <>
+              {/* Empty state — show skeleton */}
+              <div className="brut-card col-span-2">
+                <div className="text-[0.75rem] text-[var(--text-muted)] font-[family-name:var(--font-mono)] uppercase tracking-wider mb-4">
+                  No Configuration
+                </div>
+                <div className="text-[var(--text-faint)] text-[0.85rem] font-[family-name:var(--font-mono)]">
+                  No configuration found. Run an attack or create a config file to populate settings.
+                </div>
+              </div>
+            </>
+          ) : (
+            sections.map((section) => {
+              const entries = allEntries.filter((e) => e.section === section);
+              return (
+                <div key={section} className="brut-card">
+                  <div className="text-[0.75rem] text-[var(--text-muted)] font-[family-name:var(--font-mono)] uppercase tracking-wider mb-6">
+                    {section.replace(/_/g, " ")}
+                  </div>
+                  <div className="space-y-3">
+                    {entries.map((entry) => (
+                      <ConfigField
+                        key={entry.key}
+                        label={entry.key.replace(/_/g, " ")}
+                        value={entry.key.toLowerCase().includes("key") || entry.key.toLowerCase().includes("secret") ? "••••••••" : entry.value}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          )}
 
-          {/* Paths Config */}
-          <div className="brut-card">
-            <div className="text-[0.75rem] text-[var(--text-muted)] font-[family-name:var(--font-mono)] uppercase tracking-wider mb-6">
-              Paths
-            </div>
-            <div className="space-y-4">
-              <ConfigField label="Vault Directory" value={config?.paths?.vault ?? "—"} />
-              <ConfigField label="Database Path" value={config?.paths?.database ?? "—"} />
-            </div>
-          </div>
-
-          {/* Frameworks */}
-          <div className="brut-card">
-            <div className="text-[0.75rem] text-[var(--text-muted)] font-[family-name:var(--font-mono)] uppercase tracking-wider mb-6">
-              Compliance Frameworks
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(config?.frameworks ?? []).length > 0
-                ? config!.frameworks!.map((fw) => (
-                    <span
-                      key={fw}
-                      className="px-3 py-1 border border-[var(--border-hard)] text-[0.75rem] font-[family-name:var(--font-mono)] uppercase"
-                    >
-                      {fw}
-                    </span>
-                  ))
-                : <span className="text-[var(--text-muted)] text-[0.8rem]">No frameworks configured</span>
-              }
-            </div>
-          </div>
-
-          {/* Engine Info */}
+          {/* Engine Info — always visible */}
           <div className="brut-card">
             <div className="text-[0.75rem] text-[var(--text-muted)] font-[family-name:var(--font-mono)] uppercase tracking-wider mb-6">
               Engine
             </div>
-            <div className="space-y-4">
-              <ConfigField label="Engine Status" value="ONLINE" valueColor="var(--acid-green)" />
+            <div className="space-y-3">
+              <ConfigField
+                label="Engine Status"
+                value="ONLINE"
+                valueColor="var(--acid-green)"
+              />
               <ConfigField label="Version" value="v1.0.4" />
-              <ConfigField label="Attack Categories" value={config?.attack_categories ?? "All"} />
             </div>
           </div>
         </div>
@@ -113,10 +125,20 @@ export default function SettingsPage() {
   );
 }
 
-function ConfigField({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+function ConfigField({
+  label,
+  value,
+  valueColor,
+}: {
+  label: string;
+  value: string;
+  valueColor?: string;
+}) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-[var(--text-muted)] text-[0.8rem] font-[family-name:var(--font-mono)] uppercase">{label}</span>
+      <span className="text-[var(--text-muted)] text-[0.8rem] font-[family-name:var(--font-mono)] uppercase">
+        {label}
+      </span>
       <span
         className="text-[var(--text-main)] text-[0.9rem] font-[family-name:var(--font-mono)]"
         style={valueColor ? { color: valueColor } : undefined}

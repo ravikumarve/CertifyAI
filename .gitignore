@@ -35,4 +35,5 @@ Thumbs.db
 *.db-shm
 *.db.bak
 vault/
+certifyai_vault/
 reports/
