@@ -760,7 +760,7 @@ class CertifyAIApp(App):
         color: #FF0055;
         border: solid #FF0055;
         text-style: bold;
-        margin-left: auto;
+        dock: right;
     }
 
     #run-halt:hover {
