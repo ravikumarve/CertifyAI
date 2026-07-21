@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", id: "dashboard" },
-  { href: "/", label: "Run Attack", id: "run" },
+  { href: "/run", label: "Run Attack", id: "run" },
   { href: "/results", label: "Results", id: "results" },
   { href: "/settings", label: "Settings", id: "settings" },
 ];
@@ -14,10 +14,6 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   function isActive(item: typeof NAV_ITEMS[0]): boolean {
-    if (item.href === "/") {
-      // On /, highlight Run Attack (not Dashboard) to match mockup
-      return item.id === "run" && pathname === "/";
-    }
     return pathname === item.href;
   }
 
