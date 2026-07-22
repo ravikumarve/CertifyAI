@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import click
+import rich_click
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel
@@ -42,6 +43,29 @@ TEXT_MAIN = "#FFFFFF"
 TEXT_MUTED = "#888888"
 TEXT_FAINT = "#444444"
 
+# ── rich-click theme (colored --help output) ──
+rich_click.STYLE_OPTION = CYBER_BLUE
+rich_click.STYLE_ARGUMENT = TEXT_MAIN
+rich_click.STYLE_COMMAND = f"bold {ACID_GREEN}"
+rich_click.STYLE_METAVAR = TEXT_MUTED
+rich_click.STYLE_HEADER_TEXT = f"bold {ACID_GREEN}"
+rich_click.STYLE_INVOCATION = f"bold {ACID_GREEN}"
+rich_click.STYLE_HELPTEXT = TEXT_MUTED
+rich_click.STYLE_ERRORS_TEXT = ELECTRIC_RED
+rich_click.STYLE_USAGE = f"bold {TEXT_MAIN}"
+rich_click.STYLE_SWITCH = CYBER_BLUE
+rich_click.STYLE_ENVVAR = TEXT_FAINT
+rich_click.STYLE_SUBCOMMAND_META = TEXT_MUTED
+rich_click.STYLE_SUBCOMMAND = CYBER_BLUE
+rich_click.STYLE_REQUIRED_SHORT = ELECTRIC_RED
+rich_click.STYLE_REQUIRED_LONG = ELECTRIC_RED
+rich_click.STYLE_OPTION_DEFAULT = TEXT_FAINT
+rich_click.STYLE_OPTION_ENVVAR = TEXT_FAINT
+rich_click.STYLE_HEADER_LEVEL_TEXT = {"0": f"bold {TEXT_MAIN}", "1": f"bold {CYBER_BLUE}", "2": f"bold {ACID_GREEN}"}
+rich_click.STYLE_PANEL_BORDER = BORDER_HARD
+rich_click.STYLE_PANEL_BORDER_SELECTED = ACID_GREEN
+rich_click.MAX_WIDTH = 88
+
 # Rich theme
 STEALTH_THEME = Theme({
     "acid": ACID_GREEN,
@@ -60,14 +84,14 @@ STEALTH_THEME = Theme({
 console = Console(theme=STEALTH_THEME)
 
 
-@click.group()
+@click.group(cls=rich_click.RichGroup)
 @click.option(
     "-v",
     "--verbose",
     count=True,
     help="Increase verbosity (use -vv for debug).",
 )
-@click.version_option(package_name="certifyai", prog_name="certifyai")
+@rich_click.version_option(package_name="certifyai", prog_name="certifyai")
 def cli(verbose: int) -> None:
     """CertifyAI — Continuous Compliance Engine for AI Runtimes.
 
@@ -255,7 +279,7 @@ def _build_summary_panel(summary: Any) -> Panel:
     return _styled_panel("\n".join(lines), "Run Summary", score_color)
 
 
-@cli.command()
+@cli.command(cls=rich_click.RichCommand)
 @click.option(
     "-p", "--provider", default="openai", help="LLM provider (e.g., openai, anthropic, ollama)."
 )
@@ -424,7 +448,7 @@ def run(
         console.print()
 
 
-@cli.command()
+@cli.command(cls=rich_click.RichCommand)
 @click.argument("path", type=click.Path(exists=True), default="./certifyai_vault")
 def verify(path: str) -> None:
     """Verify the integrity of the evidence vault."""
@@ -469,7 +493,7 @@ def verify(path: str) -> None:
     console.print()
 
 
-@cli.command(name="list-categories")
+@cli.command(cls=rich_click.RichCommand, name="list-categories")
 @click.option(
     "--plugin-dir",
     multiple=True,
@@ -508,7 +532,7 @@ def list_categories(plugin_dir: tuple[str, ...]) -> None:
     console.print()
 
 
-@cli.command()
+@cli.command(cls=rich_click.RichCommand)
 @click.option("--framework", default="eu_ai_act", help="Compliance framework.")
 @click.option("--provider", default="openai", help="LLM provider.")
 @click.option("--model", default="gpt-4o", help="Model name.")
