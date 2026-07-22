@@ -86,9 +86,14 @@ export default function DashboardPage() {
           {/* Recent Results Table */}
           <div className="bg-[var(--bg-void)] border border-[var(--border-hard)]">
             <div className="px-4 py-3 border-b border-[var(--border-hard)] bg-[var(--bg-panel)] flex justify-between font-[family-name:var(--font-mono)] text-[0.75rem] uppercase">
-              <span>Recent Results</span>
+              <span>Recent Results (Latest Run)</span>
               <span style={{ color: "var(--cyber-blue)" }}>
-                {stats?.total ?? 0} TOTAL ATTACKS
+                {stats?.total ?? 0} ATTACKS
+                {stats && stats.all_time_total > (stats.total ?? 0) && (
+                  <span className="ml-2 text-[var(--text-faint)] font-normal">
+                    ({stats.all_time_passed} passed / {stats.all_time_total} total all-time)
+                  </span>
+                )}
               </span>
             </div>
             <table className="brut-table">

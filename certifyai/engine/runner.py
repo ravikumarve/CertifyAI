@@ -147,7 +147,7 @@ class AttackRunner:
         """Save run and results to the SQLite database."""
         from datetime import UTC, datetime
 
-        from certifyai.engine.database.models import APP_VERSION, ResultRecord, RunRecord
+        from certifyai.engine.database.models import APP_VERSION, EvidenceChainRecord, ResultRecord, RunRecord
 
         # Build scenario lookup: id -> name
         scenario_names = {s.id: s.name for s in scenarios}
@@ -196,8 +196,41 @@ class AttackRunner:
             )
         await self.db_manager.save_results(result_records)
 
+        # Persist evidence chain entry
+        from hashlib import sha256
+        from datetime import UTC, datetime
+
+        # Compute a run-level hash from all result hashes
+        combined = "".join(r.evidence_hash or r.id for r in results)
+        run_hash = sha256(combined.encode()).hexdigest()
+
+        # Get previous chain entry for linked-list integrity
+        prev = await self.db_manager.get_latest_chain_entry()
+        previous_hash = prev.run_hash if prev else sha256(b"genesis").hexdigest()
+
+        passed_count = summary.passed
+        failed_count = summary.failed
+        total_count = summary.total_attacks
+        status_label = "PASS" if failed_count == 0 else "FAIL"
+        chain_record = EvidenceChainRecord(
+            run_id=summary.id,
+            previous_hash=previous_hash,
+            run_hash=run_hash,
+            timestamp=datetime.now(UTC).isoformat(),
+            chain_metadata=json.dumps({
+                "message": f"Run {summary.id[:8]} — {passed_count}/{total_count} passed, score {summary.overall_score:.0%}",
+                "level": status_label,
+                "total_attacks": total_count,
+                "passed": passed_count,
+                "failed": failed_count,
+                "overall_score": summary.overall_score,
+                "scenario": "batch_complete",
+            }),
+        )
+        await self.db_manager.save_evidence_chain(chain_record)
+
         logger.info(
-            "Persisted run %s with %d results to database",
+            "Persisted run %s with %d results + evidence chain to database",
             summary.id,
             len(result_records),
         )

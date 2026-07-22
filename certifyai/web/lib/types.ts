@@ -4,6 +4,8 @@ export interface DashboardData {
     passed: number;
     failed: number;
     total: number;
+    all_time_passed: number;
+    all_time_total: number;
     running_time_secs: number;
     last_run_id: string | null;
     provider: string;
@@ -42,14 +44,12 @@ export interface AttackResult {
 export interface VaultEntry {
   id: string;
   run_id: string;
+  hash: string;
   previous_hash: string;
-  run_hash: string;
   timestamp: string;
-  metadata: string;
-  verified_at: string;
-  message?: string;
-  hash?: string;
+  message: string;
   level: string;
+  verified_at: string | null;
 }
 
 export interface RunSummary {

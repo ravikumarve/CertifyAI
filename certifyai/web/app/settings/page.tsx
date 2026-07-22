@@ -35,10 +35,12 @@ export default function SettingsPage() {
   for (const [section, fields] of Object.entries(config)) {
     if (typeof fields === "object" && fields !== null) {
       for (const [key, value] of Object.entries(fields)) {
-        allEntries.push({ section, key, value: String(value) });
+        const val = value != null ? String(value) : "—";
+        allEntries.push({ section, key, value: val });
       }
     } else {
-      allEntries.push({ section: "general", key: section, value: String(fields) });
+      const val = fields != null ? String(fields) : "—";
+      allEntries.push({ section: "general", key: section, value: val });
     }
   }
 
@@ -53,12 +55,14 @@ export default function SettingsPage() {
           </div>
           <div className="text-[var(--text-muted)] text-[0.85rem] mt-1 font-[family-name:var(--font-mono)]">
             Provider &amp; system configuration
-            {configResp?.source && configResp.source !== "none" && (
-              <span className="ml-2 text-[0.7rem] px-2 py-0.5 border border-[var(--border-hard)] uppercase">
+          </div>
+          {configResp?.source && configResp.source !== "none" && (
+            <div className="flex gap-2 mt-2">
+              <span className="text-[0.7rem] px-2 py-0.5 border border-[var(--border-hard)] uppercase font-[family-name:var(--font-mono)] text-[var(--text-faint)]">
                 Source: {configResp.source}
               </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

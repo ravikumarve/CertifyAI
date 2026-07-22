@@ -47,7 +47,7 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <aside className="w-[260px] bg-[var(--bg-void)] border-r border-[var(--border-hard)] flex flex-col p-6 z-10">
+    <aside className="w-[260px] h-full bg-[var(--bg-void)] border-r border-[var(--border-hard)] flex flex-col p-6 z-10">
       {/* Brand */}
       <Link
         href="/"

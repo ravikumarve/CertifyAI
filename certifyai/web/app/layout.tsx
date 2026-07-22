@@ -18,10 +18,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="flex h-screen overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 p-8 overflow-y-auto bg-[var(--bg-surface)] flex flex-col gap-6">
-          {children}
+      <body className="flex min-h-screen">
+        <div className="sticky top-0 h-screen shrink-0">
+          <Sidebar />
+        </div>
+        <main className="flex-1 bg-[var(--bg-surface)] flex flex-col min-h-screen overflow-y-auto">
+          <div className="p-8 flex flex-col gap-6 flex-1 min-h-0">
+            {children}
+          </div>
         </main>
       </body>
     </html>

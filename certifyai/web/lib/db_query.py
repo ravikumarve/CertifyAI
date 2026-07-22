@@ -87,7 +87,24 @@ def _dashboard(cursor) -> dict:
         "SELECT id, run_id, previous_hash, run_hash, timestamp, metadata, verified_at "
         "FROM evidence_chain ORDER BY timestamp DESC LIMIT 50"
     )
-    vault_entries = cursor.fetchall()
+    raw_vault = cursor.fetchall()
+    vault_entries = []
+    for v in raw_vault:
+        meta = v.get("metadata") or "{}"
+        try:
+            meta_obj = json.loads(meta) if isinstance(meta, str) else meta
+        except (json.JSONDecodeError, TypeError):
+            meta_obj = {}
+        vault_entries.append({
+            "id": v["id"],
+            "run_id": v["run_id"],
+            "hash": v["run_hash"],
+            "previous_hash": v["previous_hash"],
+            "timestamp": v["timestamp"],
+            "message": meta_obj.get("message", meta_obj.get("scenario", "Recorded.")),
+            "level": meta_obj.get("level", meta_obj.get("status", "INFO")),
+            "verified_at": v["verified_at"],
+        })
 
     cursor.execute(
         "SELECT COALESCE(SUM(passed), 0) as total_passed, "
@@ -133,9 +150,11 @@ def _dashboard(cursor) -> dict:
     return {
         "stats": {
             "score": round(latest["overall_score"] * 100, 1) if latest and latest["overall_score"] is not None else None,
-            "passed": aggr["total_passed"] if aggr else 0,
-            "failed": aggr["total_failed"] if aggr else 0,
-            "total": aggr["total_attacks"] if aggr else 0,
+            "passed": latest["passed"] if latest else 0,
+            "failed": latest["failed"] if latest else 0,
+            "total": latest["total_attacks"] if latest else 0,
+            "all_time_passed": aggr["total_passed"] if aggr else 0,
+            "all_time_total": aggr["total_attacks"] if aggr else 0,
             "running_time_secs": elapsed,
             "last_run_id": latest["id"] if latest else None,
             "provider": provider_name,

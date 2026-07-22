@@ -121,10 +121,11 @@ export default function TrendChart() {
               }}
             />
             <Line
-              type="monotone"
+              type="linear"
               dataKey="score"
               stroke="var(--acid-green)"
               strokeWidth={2}
+              strokeLinejoin="round"
               dot={{ fill: "var(--acid-green)", strokeWidth: 0, r: 3 }}
               activeDot={{ fill: "var(--acid-green)", stroke: "var(--bg-void)", strokeWidth: 2, r: 5 }}
               connectNulls={false}

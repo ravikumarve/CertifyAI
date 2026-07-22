@@ -48,9 +48,9 @@ export default function AttackTable({
   totalCount,
 }: AttackTableProps) {
   return (
-    <div className="bg-[var(--bg-void)] border border-[var(--border-hard)] flex flex-col">
+    <div className="bg-[var(--bg-void)] border border-[var(--border-hard)] flex flex-col min-h-0">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-[var(--border-hard)] bg-[var(--bg-panel)] flex justify-between font-[family-name:var(--font-mono)] text-[0.75rem] uppercase">
+      <div className="px-4 py-3 border-b border-[var(--border-hard)] bg-[var(--bg-panel)] flex justify-between font-[family-name:var(--font-mono)] text-[0.75rem] uppercase shrink-0">
         <span>Live Attack Stream</span>
         <span style={{ color: "var(--cyber-blue)" }}>
           {isRunning
@@ -63,7 +63,7 @@ export default function AttackTable({
 
       {/* Config bar */}
       {(frameworks && frameworks.length > 0) || concurrency ? (
-        <div className="flex gap-8 px-4 py-3 border-b border-[var(--border-hard)] font-[family-name:var(--font-mono)] text-[0.8rem]">
+        <div className="flex gap-8 px-4 py-3 border-b border-[var(--border-hard)] font-[family-name:var(--font-mono)] text-[0.8rem] shrink-0">
           {frameworks && frameworks.length > 0 && (
             <div className="flex flex-col gap-1">
               <span className="text-[0.7rem] text-[var(--text-muted)] uppercase">
@@ -87,57 +87,59 @@ export default function AttackTable({
         </div>
       ) : null}
 
-      {/* Table */}
-      <table className="brut-table">
-        <thead>
-          <tr>
-            <th>Scenario</th>
-            <th>Category</th>
-            <th>Severity</th>
-            <th>Status</th>
-            <th>Response</th>
-          </tr>
-        </thead>
-        <tbody>
-          {results.length === 0 ? (
+      {/* Scrollable table body */}
+      <div className="overflow-y-auto flex-1 min-h-0">
+        <table className="brut-table">
+          <thead className="sticky top-0 z-10">
             <tr>
-              <td colSpan={5} className="text-[var(--text-muted)] text-center py-8">
-                {isRunning ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-[var(--border-hard)] border-t-[var(--cyber-blue)] rounded-full animate-spin" />
-                    Waiting for results...
-                  </span>
-                ) : (
-                  <span>
-                    No results yet. Run an attack from the{" "}
-                    <code className="text-[var(--cyber-blue)]">CLI</code> or{" "}
-                    <code className="text-[var(--cyber-blue)]">TUI</code>.
-                  </span>
-                )}
-              </td>
+              <th>Scenario</th>
+              <th>Category</th>
+              <th>Severity</th>
+              <th>Status</th>
+              <th>Response</th>
             </tr>
-          ) : (
-            results.map((r) => (
-              <tr key={r.id}>
-                <td>{r.scenario_id}</td>
-                <td>{r.category}</td>
-                <td
-                  className="uppercase font-bold text-[0.7rem]"
-                  style={{ color: severityColor(r.severity) }}
-                >
-                  {r.severity}
-                </td>
-                <td>
-                  <span className={statusClass(r.status)}>{r.status}</span>
-                </td>
-                <td className="text-[var(--text-faint)] text-[0.75rem] font-[family-name:var(--font-mono)]">
-                  {r.response_time_ms != null ? `${r.response_time_ms}ms` : "—"}
+          </thead>
+          <tbody>
+            {results.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="text-[var(--text-muted)] text-center py-8">
+                  {isRunning ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-[var(--border-hard)] border-t-[var(--cyber-blue)] rounded-full animate-spin" />
+                      Waiting for results...
+                    </span>
+                  ) : (
+                    <span>
+                      No results yet. Run an attack from the{" "}
+                      <code className="text-[var(--cyber-blue)]">CLI</code> or{" "}
+                      <code className="text-[var(--cyber-blue)]">TUI</code>.
+                    </span>
+                  )}
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              results.map((r, idx) => (
+                <tr key={r.id ?? idx}>
+                  <td>{r.scenario_id}</td>
+                  <td>{r.category}</td>
+                  <td
+                    className="uppercase font-bold text-[0.7rem]"
+                    style={{ color: severityColor(r.severity) }}
+                  >
+                    {r.severity}
+                  </td>
+                  <td>
+                    <span className={statusClass(r.status)}>{r.status}</span>
+                  </td>
+                  <td className="text-[var(--text-faint)] text-[0.75rem] font-[family-name:var(--font-mono)]">
+                    {r.response_time_ms != null ? `${r.response_time_ms}ms` : "—"}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
