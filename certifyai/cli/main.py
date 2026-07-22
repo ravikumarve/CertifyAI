@@ -1,4 +1,13 @@
-"""CertifyAI CLI — attack runner, evidence vault, and compliance reporting."""
+"""CertifyAI CLI — attack runner, evidence vault, and compliance reporting.
+
+Stealth Brutalism color scheme:
+  Acid green  #D4FF00 — accent, PASS, primary highlights
+  Electric red #FF0055 — FAIL, danger, critical
+  Cyber blue  #00E5FF — INFO, labels, secondary accents
+  Void black  #000000 — background
+  Border hard #222222 — panel/table borders
+  Text muted  #888888 — secondary text
+"""
 
 from __future__ import annotations
 
@@ -14,13 +23,41 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeEl
 from rich.style import Style
 from rich.table import Table
 from rich.text import Text
+from rich.theme import Theme
 
 from certifyai.engine.database.manager import DatabaseManager
 from certifyai.engine.database.models import EvidenceChainRecord
 from certifyai.engine.models import AttackCategory, AttackStatus, ProviderConfig, RunConfig
 from certifyai.engine.runner import AttackRunner
 
-console = Console()
+# ── Stealth Brutalism Palette ──
+ACID_GREEN = "#D4FF00"
+ELECTRIC_RED = "#FF0055"
+CYBER_BLUE = "#00E5FF"
+VOID_BLACK = "#000000"
+BG_SURFACE = "#090909"
+BG_PANEL = "#121212"
+BORDER_HARD = "#222222"
+TEXT_MAIN = "#FFFFFF"
+TEXT_MUTED = "#888888"
+TEXT_FAINT = "#444444"
+
+# Rich theme
+STEALTH_THEME = Theme({
+    "acid": ACID_GREEN,
+    "red": ELECTRIC_RED,
+    "blue": CYBER_BLUE,
+    "muted": TEXT_MUTED,
+    "faint": TEXT_FAINT,
+    "border": BORDER_HARD,
+    "bg-panel": BG_PANEL,
+    "info": CYBER_BLUE,
+    "pass": ACID_GREEN,
+    "fail": ELECTRIC_RED,
+    "warn": "#FF6600",
+})
+
+console = Console(theme=STEALTH_THEME)
 
 
 @click.group()
@@ -56,11 +93,9 @@ async def _add_evidence_chain(db_mgr: DatabaseManager, run_id: str, vault: Any) 
     import hashlib
     from datetime import UTC, datetime
 
-    # Get previous chain entry for linking
     prev_entry = await db_mgr.get_latest_chain_entry()
     previous_hash = prev_entry.run_hash if prev_entry else "0" * 64
 
-    # Compute run hash from vault evidence files
     run_verification = vault.verify_run(run_id)
     hashes_in_run = []
     run_dir = vault.vault_path / f"run_{run_id}"
@@ -98,42 +133,53 @@ def _category_option(value: str | None) -> list[AttackCategory] | None:
 
 
 def _status_style(status: AttackStatus) -> Style:
-    """Return a Rich style for the given attack status."""
+    """Return a Rich style for the given attack status (Stealth Brutalism)."""
     palette = {
-        AttackStatus.PASS: Style(color="green", bold=True),
-        AttackStatus.FAIL: Style(color="red", bold=True),
-        AttackStatus.ERROR: Style(color="yellow", bold=True),
-        AttackStatus.SKIPPED: Style(color="grey58", bold=False),
+        AttackStatus.PASS: Style(color=ACID_GREEN, bold=True),
+        AttackStatus.FAIL: Style(color=ELECTRIC_RED, bold=True),
+        AttackStatus.ERROR: Style(color=ELECTRIC_RED, bold=True),
+        AttackStatus.SKIPPED: Style(color=TEXT_MUTED, bold=False),
     }
     return palette.get(status, Style())
 
 
 def _severity_label(severity: str) -> Text:
-    """Return a colored Text for severity level."""
+    """Return a colored Text for severity level (Stealth Brutalism)."""
     palette = {
-        "critical": Text("CRITICAL", style="red bold"),
-        "high": Text("HIGH", style="orange3 bold"),
-        "medium": Text("MEDIUM", style="yellow bold"),
-        "low": Text("LOW", style="green"),
-        "info": Text("INFO", style="dim"),
+        "critical": Text("CRITICAL", style=f"bold {ELECTRIC_RED}"),
+        "high": Text("HIGH", style=f"bold #FF6600"),
+        "medium": Text("MEDIUM", style=f"bold {CYBER_BLUE}"),
+        "low": Text("LOW", style=TEXT_MUTED),
+        "info": Text("INFO", style=f"dim {TEXT_MUTED}"),
     }
     return palette.get(severity.lower(), Text(severity))
+
+
+def _styled_panel(content: str, title: str, border_color: str = ACID_GREEN) -> Panel:
+    """Build a Panel with Stealth Brutalism borders."""
+    return Panel(
+        content,
+        title=Text(title, style=f"bold {border_color}"),
+        border_style=Style(color=border_color),
+        subtitle_align="right",
+    )
 
 
 def _build_results_table(
     results: list[Any],
     title: str = "Attack Results",
 ) -> Table:
-    """Build a Rich Table of attack results."""
+    """Build a Rich Table of attack results (Stealth Brutalism)."""
     table = Table(
         title=title,
-        title_style="bold cyan",
-        border_style="cyan",
-        header_style="bold white on #1a1a2e",
+        title_style=f"bold {ACID_GREEN}",
+        border_style=BORDER_HARD,
+        header_style=f"bold {TEXT_MAIN} on {BG_PANEL}",
+        row_styles=["", f"on {BG_SURFACE}"],
     )
-    table.add_column("#", style="dim", width=4)
-    table.add_column("Category", style="cyan", no_wrap=True)
-    table.add_column("Attack", style="white")
+    table.add_column("#", style=TEXT_MUTED, width=4)
+    table.add_column("Category", style=CYBER_BLUE, no_wrap=True)
+    table.add_column("Attack", style=TEXT_MAIN)
     table.add_column("Status", width=8)
     table.add_column("Severity", width=10)
     table.add_column("Time", justify="right", width=8)
@@ -157,6 +203,56 @@ def _build_results_table(
             ev,
         )
     return table
+
+
+def _build_config_header(
+    provider: str,
+    model: str,
+    vault: str,
+    db: str,
+    dry_run: bool,
+    category: str | None = None,
+    plugin_dirs: list[Path] | None = None,
+    concurrency: int | None = None,
+) -> Panel:
+    """Build the run config header panel."""
+    lines = [
+        f"[bold {CYBER_BLUE}]Provider:[/]   {provider}",
+        f"[bold {CYBER_BLUE}]Model:[/]      {model}",
+        f"[bold {CYBER_BLUE}]Vault:[/]      {vault}",
+        f"[bold {CYBER_BLUE}]DB:[/]         {db}",
+        f"[bold {CYBER_BLUE}]Dry-run:[/]    {'yes' if dry_run else 'no'}",
+    ]
+    if category:
+        lines.append(f"[bold {CYBER_BLUE}]Categories:[/] {category}")
+    if plugin_dirs:
+        lines.append(f"[bold {CYBER_BLUE}]Plugins:[/] {', '.join(str(d) for d in plugin_dirs)}")
+    if concurrency:
+        lines.append(f"[bold {CYBER_BLUE}]Concurrency:[/] {concurrency}")
+
+    return _styled_panel("\n".join(lines), "CertifyAI Run", ACID_GREEN)
+
+
+def _build_summary_panel(summary: Any) -> Panel:
+    """Build the run summary panel with score."""
+    score_color = (
+        ACID_GREEN
+        if summary.overall_score and summary.overall_score >= 0.8
+        else "#FF6600"
+        if summary.overall_score and summary.overall_score >= 0.5
+        else ELECTRIC_RED
+    )
+    lines = [
+        f"[bold {TEXT_MAIN}]Total:[/]   {summary.total_attacks}",
+        f"[bold {ACID_GREEN}]Passed:[/]  {summary.passed}",
+        f"[bold {ELECTRIC_RED}]Failed:[/]  {summary.failed}",
+        f"[bold #FF6600]Errors:[/]  {summary.errors}",
+    ]
+    if summary.overall_score is not None:
+        lines.append("")
+        lines.append(f"[bold {TEXT_MAIN}]Score:[/]  [{score_color}]{summary.overall_score:.1%}[/]")
+
+    return _styled_panel("\n".join(lines), "Run Summary", score_color)
 
 
 @cli.command()
@@ -218,29 +314,18 @@ def run(
         concurrency=concurrency,
     )
 
-    # Build registry with optional external plugin directories
     from certifyai.engine.registry import PluginRegistry
 
     plugin_dirs_list = [Path(d) for d in plugin_dir] if plugin_dir else []
     registry = PluginRegistry(plugin_dirs=plugin_dirs_list)
 
-    # Header panel
-    config_lines = [
-        f"[bold cyan]Provider:[/] {provider}",
-        f"[bold cyan]Model:[/]    {model}",
-        f"[bold cyan]Vault:[/]    {vault}",
-        f"[bold cyan]DB:[/]       {db}",
-        f"[bold cyan]Dry-run:[/]  {'yes' if dry_run else 'no'}",
-    ]
-    if category:
-        config_lines.append(f"[bold cyan]Categories:[/] {category}")
-    if plugin_dirs_list:
-        config_lines.append(f"[bold cyan]Plugins:[/] {', '.join(str(d) for d in plugin_dirs_list)}")
-    if concurrency:
-        config_lines.append(f"[bold cyan]Concurrency:[/] {concurrency}")
-
+    # Config header
     console.print()
-    console.print(Panel("\n".join(config_lines), title="[bold]CertifyAI[/]", border_style="cyan"))
+    console.print(_build_config_header(
+        provider, model, vault, db, dry_run,
+        category=category, plugin_dirs=plugin_dirs_list,
+        concurrency=concurrency,
+    ))
     console.print()
 
     # Initialize database
@@ -252,10 +337,10 @@ def run(
     completed_count = 0
 
     progress = Progress(
-        SpinnerColumn(),
+        SpinnerColumn(style=ACID_GREEN),
         TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        BarColumn(complete_style=ACID_GREEN, finished_style=ACID_GREEN, pulse_style=CYBER_BLUE),
+        TextColumn(f"[{TEXT_MUTED}]{{task.percentage:>3.0f}}%[/]"),
         TimeElapsedColumn(),
         console=console,
     )
@@ -264,15 +349,18 @@ def run(
         nonlocal completed_count
         completed_count += 1
         all_results.append(result)
-        progress.update(task_id, completed=completed_count, description=f"Testing: {scenario_name}")
+        progress.update(
+            task_id,
+            completed=completed_count,
+            description=f"[{CYBER_BLUE}]Testing:[/] {scenario_name}",
+        )
 
-    # Get scenario count for progress bar
     scenarios = registry.get_scenarios_by_category(config.attack_categories)
     total_prompts = sum(len(s.prompts) for s in scenarios)
 
     with progress:
         task_id = progress.add_task(
-            "[cyan]Running attacks...[/]",
+            f"[{ACID_GREEN}]Running attacks...[/]",
             total=total_prompts or 1,
         )
 
@@ -283,7 +371,7 @@ def run(
             progress_callback=_on_progress,
         )
         if total_prompts == 0:
-            console.print("[yellow]No attack scenarios matched the configured categories[/]")
+            console.print(f"[#FF6600]No attack scenarios matched the configured categories[/]")
             summary, results_list = asyncio.run(runner.run_all())
         else:
             summary, results_list = asyncio.run(runner.run_all())
@@ -297,38 +385,18 @@ def run(
         vault_path.mkdir(parents=True, exist_ok=True)
         evidence_vault = EvidenceVault(vault_path)
         evidence_vault.store_batch(all_results)
-        console.print(f"  [green]\u2713[/] Evidence stored in: {vault}")
+        console.print(f"  [{ACID_GREEN}]\u2713[/] Evidence stored in: {vault}")
 
-        # Add evidence chain entry to database
         try:
             asyncio.run(_add_evidence_chain(db_mgr, summary.id, evidence_vault))
         except Exception:
-            console.print("[yellow]Warning: Could not add evidence chain entry[/]")
+            console.print(f"[#FF6600]Warning: Could not add evidence chain entry[/]")
 
-    # Close database
     asyncio.run(db_mgr.close())
 
-    # Results summary panel
-    summary_lines = [
-        f"[bold]Total:[/]  {summary.total_attacks}",
-        f"[green]Passed:[/]  {summary.passed}",
-        f"[red]Failed:[/]  {summary.failed}",
-        f"[yellow]Errors:[/]  {summary.errors}",
-    ]
-    if summary.overall_score is not None:
-        score_color = (
-            "green"
-            if summary.overall_score >= 0.8
-            else "yellow"
-            if summary.overall_score >= 0.5
-            else "red"
-        )
-        summary_lines.append(f"\n[bold]Score:[/] [{score_color}]{summary.overall_score:.1%}[/]")
-
+    # Results summary
     console.print()
-    console.print(
-        Panel("\n".join(summary_lines), title="[bold]Run Summary[/]", border_style="green")
-    )
+    console.print(_build_summary_panel(summary))
 
     # Per-result table
     if all_results:
@@ -352,7 +420,7 @@ def run(
             json.dumps(compliance_report.model_dump(mode="json"), indent=2, default=str),
             encoding="utf-8",
         )
-        console.print(f"  [green]\u2713[/] Compliance report saved to: {report_path}")
+        console.print(f"  [{ACID_GREEN}]\u2713[/] Compliance report saved to: {report_path}")
         console.print()
 
 
@@ -365,14 +433,14 @@ def verify(path: str) -> None:
     vault = EvidenceVault(Path(path))
     result = vault.verify_all()
 
-    # Build verification table
     table = Table(
         title="Evidence Vault Verification",
-        title_style="bold cyan",
-        border_style="cyan",
-        header_style="bold white on #1a1a2e",
+        title_style=f"bold {ACID_GREEN}",
+        border_style=BORDER_HARD,
+        header_style=f"bold {TEXT_MAIN} on {BG_PANEL}",
+        row_styles=["", f"on {BG_SURFACE}"],
     )
-    table.add_column("Run ID", style="cyan")
+    table.add_column("Run ID", style=CYBER_BLUE)
     table.add_column("Status", width=10)
     table.add_column("Files", justify="right")
     table.add_column("Mismatches", width=20)
@@ -380,7 +448,7 @@ def verify(path: str) -> None:
     for run_id, run_result in result.get("runs", {}).items():
         verified = run_result.get("verified", False)
         status = (
-            Text("\u2713", style="green bold") if verified else Text("\u2717", style="red bold")
+            Text("\u2713", style=f"bold {ACID_GREEN}") if verified else Text("\u2717", style=f"bold {ELECTRIC_RED}")
         )
         mismatches = run_result.get("mismatches", [])
         mismatch_text = ", ".join(mismatches[:3]) if mismatches else "-"
@@ -391,12 +459,12 @@ def verify(path: str) -> None:
             mismatch_text,
         )
 
+    console.print()
     if result.get("verified"):
-        console.print(
-            f"\n[bold green]\u2713 Vault integrity verified[/] — {result.get('total_runs', 0)} run(s) checked\n"
-        )
+        console.print(f" [{ACID_GREEN}]\u2713[/] Vault integrity verified — {result.get('total_runs', 0)} run(s) checked")
     else:
-        console.print("\n[bold red]\u2717 Vault integrity verification FAILED[/]\n")
+        console.print(f" [{ELECTRIC_RED}]\u2717[/] Vault integrity verification FAILED")
+    console.print()
     console.print(table)
     console.print()
 
@@ -417,11 +485,12 @@ def list_categories(plugin_dir: tuple[str, ...]) -> None:
 
     table = Table(
         title="Available Attack Categories",
-        title_style="bold cyan",
-        border_style="cyan",
-        header_style="bold white on #1a1a2e",
+        title_style=f"bold {ACID_GREEN}",
+        border_style=BORDER_HARD,
+        header_style=f"bold {TEXT_MAIN} on {BG_PANEL}",
+        row_styles=["", f"on {BG_SURFACE}"],
     )
-    table.add_column("Category", style="cyan bold", width=22)
+    table.add_column("Category", style=f"bold {CYBER_BLUE}", width=22)
     table.add_column("# Scenarios", justify="right", width=12)
     table.add_column("Scenarios")
 
@@ -454,12 +523,11 @@ def init(framework: str, provider: str, model: str, db: str) -> None:
         await db_mgr.close()
 
     asyncio.run(_init_db())
-    console.print(f"[green]\u2713[/] Initialized database: {db}")
+    console.print(f"[{ACID_GREEN}]\u2713[/] Initialized database: {db}")
 
-    # Create config file
     cfg_path = Path("certifyai.yaml")
     if cfg_path.exists():
-        console.print("[yellow]certifyai.yaml already exists[/]")
+        console.print(f"[#FF6600]certifyai.yaml already exists[/]")
         return
 
     cfg: dict[str, Any] = {
@@ -475,22 +543,17 @@ def init(framework: str, provider: str, model: str, db: str) -> None:
 
     cfg_path.write_text(yaml.dump(cfg, default_flow_style=False), encoding="utf-8")
 
-    # Config summary panel
     config_lines = [
-        f"[bold cyan]Provider:[/]   {provider}",
-        f"[bold cyan]Model:[/]      {model}",
-        f"[bold cyan]Framework:[/]  {framework}",
-        f"[bold cyan]Database:[/]   {db}",
+        f"[bold {CYBER_BLUE}]Provider:[/]   {provider}",
+        f"[bold {CYBER_BLUE}]Model:[/]      {model}",
+        f"[bold {CYBER_BLUE}]Framework:[/]  {framework}",
+        f"[bold {CYBER_BLUE}]Database:[/]   {db}",
     ]
     console.print()
     console.print(
-        Panel(
-            "\n".join(config_lines),
-            title="[bold green]CertifyAI Initialized[/]",
-            border_style="green",
-        )
+        _styled_panel("\n".join(config_lines), "CertifyAI Initialized", ACID_GREEN)
     )
-    console.print("  Run [bold]certifyai run[/] to start the attack battery.")
+    console.print(f"  Run [bold {ACID_GREEN}]certifyai run[/] to start the attack battery.")
     console.print()
 
 
