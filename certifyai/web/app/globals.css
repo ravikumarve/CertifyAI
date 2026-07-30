@@ -127,3 +127,18 @@ body {
 }
 .brut-input::placeholder { color: var(--text-faint); }
 .brut-input:focus { border-color: var(--border-focus); }
+
+/* ── Settings Grid ── */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.settings-panel { background: var(--bg-void); border: 1px solid var(--border-hard); padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+.settings-panel.full { grid-column: 1 / -1; }
+.sp-title { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-main); padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-hard); }
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+.field-label { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.field-input, .field-select {
+  font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-main);
+  background: var(--bg-surface); border: 1px solid var(--border-hard); padding: 0.65rem 0.9rem; width: 100%;
+}
+.field-input:focus, .field-select:focus { outline: none; border-color: var(--acid-green); }
+.field-select { text-transform: uppercase; cursor: pointer; }
+.field-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }

@@ -11,8 +11,8 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Phase** | Phase 5 — Web Dashboard (Next.js 16 + Tailwind v4 + recharts) |
-| **Code written** | ~5,000 lines Python + ~800 lines Next.js |
+| **Phase** | Phase 4c — TUI Windowed-Frame Finale |
+| **Code written** | ~5,700 lines Python + ~800 lines Next.js |
 | **Documents** | 17 docs in `docs/` (Waves 1-3) |
 | **Git repo** | https://github.com/ravikumarve/CertifyAI |
 | **Revenue** | $0 |
@@ -91,6 +91,21 @@ visually confirmed the new SVG is actually correct.
 ---
 
 ## 💾 Session Memory Ledger
+
+### [2026-07-30 14:30] — Windowed-Terminal Frame + Single-Row Header (Mockup Match)
+- **State:** Success — 86/86 tests passing, pushed `d1fe7d5`
+- **MCP Data Used:** direct file reads (app.py for CSS/compose/event handlers)
+- **Agency Agents Deployed:** Orchestrator (direct execution — all CSS, compose, and handler changes)
+- **Architectural Decision:** Wrapped whole TUI in `Container(id="outer-frame")` with `border: heavy #444444` and `margin: 1 2` to create a windowed-terminal look sitting on pure black screen. Combined `>_` prompt, 4 tab labels, and version text into ONE horizontal `#tui-header` row (height:2). Hidden `TabbedContent`'s built-in `Tabs` widget (`height:0; overflow:hidden`) to prevent visual duplication. Header-tab Buttons handle clicks via `CertifyAIApp.on_button_pressed` (not Tabs widget). `action_switch_tab` now toggles `.active-tab` CSS class for D4FF00 underline indicator. Footer moved outside `#outer-frame` to avoid `border: heavy` overwriting its content.
+- **Key Visual Changes:**
+  1. **Outer frame**: `┏━━...┓` top border, `┃` side borders, `┗━━...┛` bottom border — frame chars from `border: heavy`
+  2. **Header**: `┃>_│Dashboard│Run_Attack│Results│Settings│certifyai-tui // v1.0.4┃` — `>_` in acid green, active tab white bold, others muted, version `#444444`
+  3. **Dashboard**: 2×2 stat cards + Recent Runs data table with 7 columns
+  4. **Run Attack, Results, Settings** — all properly frame-wrapped
+  5. **Footer**: hotkey bar below frame bottom border
+- **Mockup Reference:** `certifyai_tui_simulator_stealth_brutalist_full.html` (all 4 pages, replaces old single-page version)
+- **Build Status:** Pushed to GitHub (`d1fe7d5`)
+- **Next Turn Directive:** Continue Phase 5 Web Dashboard polish, or begin Gumroad launch prep (pricing page, commercial license bundle, README polish)
 
 ### [2026-07-30 13:58] — TUI Stealth Brutalism Redesign + Snapshot Fix
 - **State:** Success — 4 snapshot SVGs generated, 86/86 tests passing
