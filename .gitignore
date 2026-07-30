@@ -37,3 +37,7 @@ Thumbs.db
 vault/
 certifyai_vault/
 reports/
+
+# Generated
+snapshot_report.html
+certifyai.yaml

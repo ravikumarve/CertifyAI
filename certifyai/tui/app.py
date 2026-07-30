@@ -226,21 +226,24 @@ class RunAttackContent(Vertical):
     running = reactive(False)
 
     def compose(self) -> ComposeResult:
-        yield Static("Attack Run", classes="section-title")
-        with Container(id="run-config-summary"):
-            yield Static("PROVIDER: —", id="run-cfg-provider")
-            yield Static("MODEL: —", id="run-cfg-model")
-            yield Static("CONCURRENCY: —", id="run-cfg-concurrency")
-        with Horizontal(id="run-buttons"):
-            yield Button(Text(" [ RUN_BATTERY ] "), id="run-start", variant="primary")
-            yield Button(Text(" [ DRY_RUN ] "), id="run-dry", variant="default")
-            yield Button(Text(" [ HALT ] "), id="run-halt")
-        yield Static(id="run-progress-text", classes="status-text")
-        yield ProgressBar(id="run-progress", total=100, show_percentage=False, show_eta=False)
+        # Main panel: config + buttons + progress bar
+        with Container(id="run-config-panel"):
+            with Horizontal(id="run-cfg-row"):
+                yield Static("PROVIDER: —", id="run-cfg-provider")
+                yield Static("MODEL: —", id="run-cfg-model")
+                yield Static("CONCURRENCY: —", id="run-cfg-concurrency")
+            with Horizontal(id="run-buttons"):
+                yield Button(Text(" [ RUN_BATTERY ] "), id="run-start", variant="primary")
+                yield Button(Text(" [ DRY_RUN ] "), id="run-dry", variant="default")
+                yield Button(Text(" [ HALT ] "), id="run-halt")
+            with Horizontal(id="run-progress-row"):
+                yield Static("0%", id="run-progress-pct")
+                yield ProgressBar(id="run-progress", total=100, show_percentage=False, show_eta=False)
+                yield Static("0/0 COMPLETE", id="run-progress-count")
+        # Data table panel
+        yield DataTable(id="run-scenario-table")
         yield Static(id="run-elapsed")
         yield Static(id="run-current")
-        yield Static(id="run-status", classes="section-title")
-        yield DataTable(id="run-scenario-table")
         yield Static("", id="run-summary", classes="run-summary-box")
         yield Static("", id="run-error", classes="error-text")
 
@@ -254,15 +257,15 @@ class RunAttackContent(Vertical):
     def _load_config_summary(self) -> None:
         cfg = load_config()
         prov = cfg.get("provider", {})
-        self.query_one("#run-config-summary", Container).border_title = "EXECUTION_CONFIG"
+        self.query_one("#run-config-panel", Container).border_title = " EXECUTION_CONFIG "
         self.query_one("#run-cfg-provider", Static).update(
-            f"PROVIDER: [bold]{prov.get('name', '—').upper()}[/bold]"
+            f"[#888888]PROVIDER:[/#888888] [bold white]{prov.get('name', '—').upper()}[/bold white]"
         )
         self.query_one("#run-cfg-model", Static).update(
-            f"MODEL: [bold]{prov.get('model', '—').upper()}[/bold]"
+            f"[#888888]MODEL:[/#888888] [bold white]{prov.get('model', '—').upper()}[/bold white]"
         )
         self.query_one("#run-cfg-concurrency", Static).update(
-            "CONCURRENCY: [bold]3 THREADS[/bold]"
+            "[#888888]CONCURRENCY:[/#888888] [bold white]3 THREADS[/bold white]"
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -289,7 +292,8 @@ class RunAttackContent(Vertical):
         self.query_one("#run-summary", Static).update("")
         self.query_one("#run-error", Static).update("")
         self.query_one("#run-progress", ProgressBar).update(progress=0)
-        self.query_one("#run-progress-text", Static).update("0% — 0/0 COMPLETE")
+        self.query_one("#run-progress-pct", Static).update("0%")
+        self.query_one("#run-progress-count", Static).update("0/0 COMPLETE")
         self.query_one("#run-elapsed", Static).update("Elapsed: 00:00")
         self.query_one("#run-current", Static).update("Starting…")
         self.run_attack_worker(dry_run)
@@ -359,17 +363,29 @@ class RunAttackContent(Vertical):
             self.query_one("#run-current", Static).update("")
 
     def _on_progress(self, scenario_name: str, result: AttackResult) -> None:
-        self._progress_updates.append((scenario_name, result.status.value))
+        category = result.category.value if result.category else "—"
+        self._progress_updates.append((scenario_name, result.status.value, category))
 
     def _process_progress(self) -> None:
         table = self.query_one("#run-scenario-table", DataTable)
         if not table.columns:
-            table.add_columns("Scenario", "Status", "Severity", "Time (ms)")
+            table.add_columns("ID", "SCENARIO", "CATEGORY", "STATUS")
 
         while self._progress_updates:
-            name, status = self._progress_updates.pop(0)
-            status_display = {"pass": "PASS", "fail": "FAIL", "error": "ERROR"}.get(status, status.upper())
-            table.add_row(name, status_display, "", "")
+            name, status, category = self._progress_updates.pop(0)
+            status_colors = {"pass": "green", "fail": "red", "error": "red", "skipped": "grey58"}
+            status_color = status_colors.get(status, "white")
+            status_display = {"pass": "PASS", "fail": "FAIL", "error": "ERROR", "skipped": "SKIP"}.get(
+                status, status.upper()
+            )
+            row_id = len(table.rows) + 1
+            category_display = category.replace("_", " ").upper() if category and category != "—" else "—"
+            table.add_row(
+                str(row_id).zfill(2),
+                name,
+                category_display,
+                f"[{status_color}]{status_display}[/{status_color}]",
+            )
             self.query_one("#run-current", Static).update(f"Current: {name}")
 
         # Update progress text
@@ -377,9 +393,8 @@ class RunAttackContent(Vertical):
         total = row_count + len(self._progress_updates)
         pct = int((row_count / max(total, 1)) * 100)
         self.query_one("#run-progress", ProgressBar).update(progress=pct)
-        self.query_one("#run-progress-text", Static).update(
-            f"{pct}% — {row_count}/{total} COMPLETE"
-        )
+        self.query_one("#run-progress-pct", Static).update(f"{pct}%")
+        self.query_one("#run-progress-count", Static).update(f"{row_count}/{total} COMPLETE")
 
     def _update_elapsed(self) -> None:
         if not self.running:
@@ -413,25 +428,22 @@ class RunAttackContent(Vertical):
         # Update scenario table with full results
         table = self.query_one("#run-scenario-table", DataTable)
         table.clear(columns=True)
-        table.add_columns("Scenario", "Status", "Severity", "Time (ms)")
-        for r in results:
-            sev_icon = {"critical": "CRT", "high": "HIGH", "medium": "MED", "low": "LOW"}.get(
-                r.severity.value, "---"
-            )
-            status_text = "PASS" if r.status == AttackStatus.PASS else "FAIL"
+        table.add_columns("ID", "SCENARIO", "CATEGORY", "STATUS")
+        for i, r in enumerate(results, 1):
+            category_display = r.category.value.replace("_", " ").upper() if r.category else "—"
+            status_text = "[green]PASS[/green]" if r.status == AttackStatus.PASS else "[red]FAIL[/red]"
             table.add_row(
+                str(i).zfill(2),
                 r.scenario_id,
+                category_display,
                 status_text,
-                sev_icon,
-                str(r.response_time_ms or ""),
                 key=r.id,
             )
 
         # Update progress bar
-        pb = self.query_one("#run-progress", ProgressBar)
-        pb.update(progress=100)
-        pct_text = self.query_one("#run-progress-text", Static)
-        pct_text.update(f"100% — {total}/{total} COMPLETE")
+        self.query_one("#run-progress", ProgressBar).update(progress=100)
+        self.query_one("#run-progress-pct", Static).update("100%")
+        self.query_one("#run-progress-count", Static).update(f"{total}/{total} COMPLETE")
 
     def _get_app(self) -> CertifyAIApp:
         return self.app  # type: ignore[return-value]
@@ -666,10 +678,16 @@ class CertifyAIApp(App):
 
     Screen {
         background: #000000;
-        border: solid #090909;
+        layout: vertical;
     }
 
-    /* Override Textual theme variables */
+    /* Force auto-height for containers — prevents headless/take_svg_screenshot
+       from computing 1fr height that collapses parent layout (Textual #5397) */
+    Container, Vertical {
+        height: auto;
+    }
+
+    /* ── Theme Variables ── */
     $primary: #D4FF00;
     $secondary: #00E5FF;
     $error: #FF0055;
@@ -731,16 +749,93 @@ class CertifyAIApp(App):
         height: 12;
     }
 
-    /* ── Run Attack Tab ── */
+    /* ── Custom Header Bar ── */
 
-    #run-config-summary {
-        layout: horizontal;
+    #header-bar {
+        background: #090909;
+        border-bottom: solid #444444;
         height: 3;
-        background: #121212;
-        border: solid #222222;
+        layout: horizontal;
     }
 
-    #run-config-summary > Static {
+    #header-prompt {
+        background: #121212;
+        color: #D4FF00;
+        text-style: bold;
+        width: 6;
+        text-align: center;
+        border-right: solid #444444;
+    }
+
+    #header-version {
+        color: #444444;
+        text-style: bold;
+        width: 1fr;
+        text-align: right;
+        padding: 0 2;
+    }
+
+    /* ── Tabs ── */
+
+    TabbedContent {
+        background: #000000;
+    }
+
+    TabPane {
+        background: #000000;
+    }
+
+    Tabs {
+        background: #090909;
+        border: none;
+        border-bottom: solid #444444;
+    }
+
+    Tabs Tab {
+        height: 3;
+        background: #090909;
+        color: #888888;
+        border: none;
+        border-right: solid #444444;
+        text-style: bold;
+        padding: 0 2;
+    }
+
+    Tabs Tab:hover {
+        background: #121212;
+        color: #FFFFFF;
+    }
+
+    Tab.-active {
+        background: #000000;
+        color: #FFFFFF;
+        border: none;
+        border-bottom: solid #D4FF00;
+    }
+
+    /* ── Tab Content ── */
+
+    Vertical {
+        padding: 0 1;
+    }
+
+    /* ── Run Attack Panel ── */
+
+    #run-config-panel {
+        border: solid #D4FF00;
+        border-title-color: #D4FF00;
+        border-title-style: bold;
+        background: #090909;
+        padding: 1;
+        margin: 1 0;
+    }
+
+    #run-cfg-row {
+        layout: horizontal;
+        height: 3;
+    }
+
+    #run-cfg-row > Static {
         width: 1fr;
         padding: 1;
         color: #888888;
@@ -748,7 +843,7 @@ class CertifyAIApp(App):
     }
 
     #run-buttons {
-        padding: 1;
+        padding: 1 0;
         height: auto;
     }
 
@@ -794,6 +889,39 @@ class CertifyAIApp(App):
         color: #000000;
     }
 
+    /* ── Progress Row ── */
+
+    #run-progress-row {
+        height: 3;
+        margin: 0;
+    }
+
+    #run-progress-pct {
+        color: #D4FF00;
+        text-style: bold;
+        width: 8;
+        text-align: center;
+    }
+
+    #run-progress-count {
+        color: #FFFFFF;
+        text-style: bold;
+        width: 18;
+        text-align: center;
+    }
+
+    ProgressBar {
+        height: 1;
+        margin: 1;
+    }
+
+    ProgressBar > .bar {
+        background: #222222;
+        color: #D4FF00;
+    }
+
+    /* ── Run Status / Elapsed / Current ── */
+
     #run-elapsed, #run-current {
         padding: 0 1;
         color: #888888;
@@ -801,18 +929,7 @@ class CertifyAIApp(App):
 
     #run-scenario-table {
         height: 12;
-    }
-
-    /* ── Progress Bar ── */
-
-    ProgressBar {
-        height: 1;
         margin: 1 0;
-    }
-
-    ProgressBar > .bar {
-        background: #222222;
-        color: #D4FF00;
     }
 
     /* ── Results Tab ── */
@@ -872,57 +989,12 @@ class CertifyAIApp(App):
         background: #1a1a1a;
     }
 
-    /* ── Tab Content ── */
-
-    Vertical {
-        padding: 0 1;
-    }
-
-    TabbedContent {
-        background: #000000;
-    }
-
-    TabPane {
-        background: #000000;
-    }
-
-    Tabs {
-        background: #090909;
-    }
-
-    Tabs Tab {
-        height: 3;
-        background: #090909;
-        color: #888888;
-        border: solid #222222;
-        text-style: bold;
-        padding: 0 2;
-    }
-
-    Tabs Tab:hover {
-        background: #121212;
-        color: #FFFFFF;
-    }
-
-    Tabs Tab.-active {
-        background: #000000;
-        color: #D4FF00;
-        border: solid #444444;
-        border-bottom: solid #D4FF00;
-    }
-
-    /* ── Header & Footer ── */
-
-    Header {
-        background: #090909;
-        color: #D4FF00;
-        border-bottom: solid #222222;
-    }
+    /* ── Footer ── */
 
     Footer {
         background: #121212;
         color: #888888;
-        border-top: solid #222222;
+        border-top: solid #444444;
     }
 
     Footer > .footer--key {
@@ -971,7 +1043,9 @@ class CertifyAIApp(App):
         self.vault_path = Path(vault_str)
 
     def compose(self) -> ComposeResult:
-        yield Header()
+        with Container(id="header-bar"):
+            yield Static(" >_ ", id="header-prompt")
+            yield Static("certifyai-tui // v1.0.3", id="header-version")
         with TabbedContent(initial="dashboard"):
             with TabPane("DASHBOARD", id="dashboard"):
                 yield DashboardContent()

@@ -19,6 +19,47 @@
 | **Next action** | Push Phase 5 commit + `npm run build` + deploy dev server, OR Gumroad launch prep (pricing page, commercial license bundle, README polish) |
 
 ---
+## Visual verification (mandatory — do not skip)
+After any change to layout, styling, component structure, or data
+rendering in the web frontend:
+
+1. Open the running dev server URL with agent-browser
+2. Capture a full-page screenshot: `agent-browser screenshot --full`
+3. If checking interactive elements (buttons, forms, nav), use
+   `agent-browser screenshot --annotate` to get numbered element
+   references alongside the image
+4. If a reference mockup HTML exists in the repo, open it too and
+   compare directly — spacing, alignment, colors, missing elements
+5. Check the browser console for errors: `agent-browser console`
+6. If anything doesn't match or an error is present, fix it and
+   repeat steps 1-5 before reporting the task as done
+
+Never report a UI change as complete without having actually seen
+it render via a full-page screenshot. A code change that "should"
+look right is not verified until confirmed visually.
+
+
+## Visual verification (mandatory — do not skip)
+After any change to a Textual screen (CSS, compose(), widget layout,
+DataTable columns, panel titles):
+
+1. Run `pytest tests/test_snapshots.py --snapshot-update` to generate
+   fresh SVG captures of every screen
+2. Open the generated SVG(s) in tests/__snapshots__/ and read the
+   actual content — check for: collapsed/zero-height widgets
+   (bordered widgets need explicit height), duplicate table columns
+   (add_columns() must be guarded with `if not table.columns`),
+   blank/missing labels (bracket text `[...]` must be wrapped in
+   rich.text.Text() to avoid Rich markup parsing it as a style tag)
+3. If a reference mockup HTML exists, compare structure against it
+4. Fix any issue found, regenerate snapshots, and re-check before
+   reporting the task as done
+
+Do not run --snapshot-update carelessly — it overwrites the baseline
+even for a broken render. Only update the baseline once you've
+visually confirmed the new SVG is actually correct.
+
+---
 
 ## 🧠 Architecture Decisions
 
@@ -51,7 +92,34 @@
 
 ## 💾 Session Memory Ledger
 
-### [2026-07-21 23:30] — Phase 5: Web Dashboard Polish (recharts Trend + Results Search/Filter)
+### [2026-07-30 13:58] — TUI Stealth Brutalism Redesign + Snapshot Fix
+- **State:** Success — 4 snapshot SVGs generated, 86/86 tests passing
+- **Files Modified:** `certifyai/tui/app.py` (CSS rewrite, compose restructure), `tests/test_snapshots.py` (press keys fixed)
+- **MCP Data Used:** direct file reads, `runpy`/`export_screenshot()`/`take_svg_screenshot()` debugging across isolated apps
+- **Agents Deployed:** Orchestrator (direct execution — all CSS, compose, test changes)
+- **Architectural Decision:** Added `Container, Vertical { height: auto; }` to CSS — Textual's default `height: 1fr` on Container causes `take_svg_screenshot` (used by `snap_compare` fixture) to collapse parent layout when Container/Vertical subclasses are yielded inside TabPane. `run_test()` is unaffected but `snap_compare` uses `app.run(headless=True)` which manifests the bug.
+- **Changes Made:**
+  1. **Header bar**: Replaced `Header()` with custom `Container(id="header-bar")` containing `Static(" >_ ", id="header-prompt")` and `Static("certifyai-tui // v1.0.3", id="header-version")`, using `layout: horizontal` (not `dock: left/right` — that broke SVG export)
+  2. **CSS (Stealth Brutalism)**: Full rewrite — `#D4FF00` acid-green, `#FF0055` electric-red, `#00E5FF` cyber-blue, `#090909`/`#121212`/`#222222` surfaces
+  3. **Tab bindings**: Snapshot press keys fixed from numbers to letters (`"2"`→`"r"`, `"3"`→`"t"`, `"4"`→`"s"`)
+  4. **Run Attack compose**: Restructured — config info, buttons, progress bar in single `#run-config-panel` with green border + `border_title=" EXECUTION_CONFIG "`
+  5. **DataTable columns**: Changed to `("ID", "SCENARIO", "CATEGORY", "STATUS")` with colored Rich markup status
+  6. **Root cause**: Textual's `Container` default CSS has `height: 1fr`. When a `Container`/`Vertical` subclass is `yield`ed inside a `TabPane`, `take_svg_screenshot` (headless `app.run()`) computes 1fr height = fill all space, collapsing the parent TabbedContent which pushes header-bar off-screen. `run_test()` doesn't trigger this. Fix: override with `Container, Vertical { height: auto; }` globally.
+- **Key Insight:** `take_svg_screenshot` uses `app.run(headless=True, auto_pilot=...)` which creates a fresh asyncio loop. `run_test()` uses the existing test loop. The `height: 1fr` bug only manifests in `app.run()` path, making `snap_compare` produce broken SVGs while manual `run_test()` debugging shows correct layout.
+- **Build Status:** 86/86 tests pass (82 unit + 4 snapshot). All 4 SVGs at `tests/__snapshots__/test_snapshots/*.svg` (49–58 KB each) include the `>_` prompt and version text on line 0.
+- **Next Turn Directive:** Commit and push to GitHub, then begin Gumroad launch prep (pricing page, commercial license bundle, README polish) OR start next feature sprint.
+
+### [2026-07-22 07:30] — Fix 5 bugs: duplicate render, trend smoothing, stats, vault, settings
+- **State:** Success — 10 files changed, pushed `38f7a5a`, 82 tests pass, build clean
+- **Fixes Applied:**
+  - **#1 Duplicate page content**: Removed `overflow-y-auto` cascade that caused flex content to overflow. Main now has `min-h-screen overflow-y-auto`, inner wrapper constrains flex children. AttackTable has scrollable tbody with `sticky top-0` thead and `min-h-0` flex chain — prevents DOM nesting artifacts.
+  - **#2 Trend smoothing**: `type="monotone"` → `type="linear"` on recharts Line. Straight segments between real data points can't invent fake peaks.
+  - **#3 Stats consistency**: `_dashboard()` now returns latest-run `passed`/`failed`/`total` instead of SQL SUM across all runs. All-time aggregates exposed as `all_time_passed`/`all_time_total`. All 4 stat cards show "Latest Run" subtitle. Results header shows "TOTAL ATTACKS (all-time)" for context.
+  - **#4 Vault log**: Engine runner `_persist_results()` now computes SHA-256 run hash from result hashes, chains to previous entry via `previous_hash`, and saves `EvidenceChainRecord` with rich metadata (message, level, passed/failed). DB columns mapped to frontend VaultEntry shape in `db_query.py`. Two vault entries now visible in API with messages like "Run aafca4bc — 53/53 passed, score 100%".
+  - **#5 Settings polish**: Source badge moved to separate line (was inline with subtitle — text collision). `null` values now render as `"—"` instead of literal `"null"`.
+- **Build Status:** Build clean. 7 routes live.
+- **Next Turn Directive:** Gumroad launch prep (pricing page, commercial license bundle, README polish), or deploy dev server, or start next feature sprint.
+---
 - **State:** Success — 6 files modified/created, build compiles clean, 7 routes verified live
 - **MCP Data Used:** direct file reads (all 12 source files across app/, components/, lib/)
 - **Agents Deployed:** Orchestrator (direct execution — trend chart component, results filter, polish pass)

@@ -555,12 +555,16 @@ def init(framework: str, provider: str, model: str, db: str) -> None:
         return
 
     cfg: dict[str, Any] = {
-        "version": "1",
-        "provider": provider,
-        "model": model,
-        "default_framework": framework,
-        "vault_path": "./certifyai_vault",
-        "database": db,
+        "provider": {
+            "name": provider,
+            "model": model,
+            "api_key": "",
+        },
+        "paths": {
+            "vault": "./certifyai_vault",
+            "database": db,
+        },
+        "frameworks": [framework],
     }
 
     import yaml
