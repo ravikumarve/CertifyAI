@@ -674,7 +674,7 @@ class CertifyAIApp(App):
     TITLE = "CertifyAI"
     SUB_TITLE = "Continuous Compliance Engine for AI Runtimes"
     CSS = """
-    /* ── Stealth Brutalism Theme ── */
+    /* ── Stealth Brutalism Theme — Windowed Terminal ── */
 
     Screen {
         background: #000000;
@@ -723,6 +723,92 @@ class CertifyAIApp(App):
         background: #121212;
     }
 
+    /* ── Outer Frame (windowed terminal sitting on black screen) ── */
+
+    #outer-frame {
+        border: heavy #444444;
+        margin: 1 2;
+        background: #000000;
+        height: 1fr;
+    }
+
+    /* ── TUI Header (prompt + tab labels + version — single row) ── */
+
+    #tui-header {
+        background: #090909;
+        border-bottom: solid #444444;
+        height: 2;
+        layout: horizontal;
+    }
+
+    #header-prompt {
+        background: #121212;
+        color: #D4FF00;
+        text-style: bold;
+        width: 4;
+        text-align: center;
+        border-right: solid #444444;
+        /* no padding — content is just ">_" */
+    }
+
+    #header-version {
+        color: #444444;
+        text-style: bold;
+        width: 1fr;
+        text-align: right;
+        padding: 0 2;
+    }
+
+    /* Header tab buttons styled as text labels (no button chrome) */
+    Button.header-tab {
+        background: #090909;
+        color: #888888;
+        border: none;
+        border-right: solid #444444;
+        height: 2;
+        padding: 0 2;
+        text-style: bold;
+        min-width: 0;
+        margin: 0;
+    }
+
+    Button.header-tab:hover {
+        background: #121212;
+        color: #FFFFFF;
+    }
+
+    Button.header-tab.active-tab {
+        background: #000000;
+        color: #FFFFFF;
+        border: none;
+        border-bottom: solid #D4FF00;
+        border-right: solid #444444;
+    }
+
+    /* ── Hide TabbedContent's own Tabs (we use custom header) ── */
+
+    TabbedContent {
+        background: #000000;
+    }
+
+    TabPane {
+        background: #000000;
+    }
+
+    Tabs {
+        height: 0;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    /* ── Tab Content ── */
+
+    Vertical {
+        padding: 0 1;
+    }
+
     /* ── Dashboard Cards ── */
 
     #dash-cards {
@@ -747,76 +833,6 @@ class CertifyAIApp(App):
 
     #dash-runs-table {
         height: 12;
-    }
-
-    /* ── Custom Header Bar ── */
-
-    #header-bar {
-        background: #090909;
-        border-bottom: solid #444444;
-        height: 3;
-        layout: horizontal;
-    }
-
-    #header-prompt {
-        background: #121212;
-        color: #D4FF00;
-        text-style: bold;
-        width: 6;
-        text-align: center;
-        border-right: solid #444444;
-    }
-
-    #header-version {
-        color: #444444;
-        text-style: bold;
-        width: 1fr;
-        text-align: right;
-        padding: 0 2;
-    }
-
-    /* ── Tabs ── */
-
-    TabbedContent {
-        background: #000000;
-    }
-
-    TabPane {
-        background: #000000;
-    }
-
-    Tabs {
-        background: #090909;
-        border: none;
-        border-bottom: solid #444444;
-    }
-
-    Tabs Tab {
-        height: 3;
-        background: #090909;
-        color: #888888;
-        border: none;
-        border-right: solid #444444;
-        text-style: bold;
-        padding: 0 2;
-    }
-
-    Tabs Tab:hover {
-        background: #121212;
-        color: #FFFFFF;
-    }
-
-    Tab.-active {
-        background: #000000;
-        color: #FFFFFF;
-        border: none;
-        border-bottom: solid #D4FF00;
-    }
-
-    /* ── Tab Content ── */
-
-    Vertical {
-        padding: 0 1;
     }
 
     /* ── Run Attack Panel ── */
@@ -1043,21 +1059,35 @@ class CertifyAIApp(App):
         self.vault_path = Path(vault_str)
 
     def compose(self) -> ComposeResult:
-        with Container(id="header-bar"):
-            yield Static(" >_ ", id="header-prompt")
-            yield Static("certifyai-tui // v1.0.3", id="header-version")
-        with TabbedContent(initial="dashboard"):
-            with TabPane("DASHBOARD", id="dashboard"):
-                yield DashboardContent()
-            with TabPane("RUN_ATTACK", id="run"):
-                yield RunAttackContent()
-            with TabPane("RESULTS", id="results"):
-                yield ResultsContent()
-            with TabPane("SETTINGS", id="settings"):
-                yield SettingsContent()
+        # Outer frame: windowed terminal with border sitting on black screen
+        with Container(id="outer-frame"):
+            # Custom header/tab row — prompt, tabs, version in one horizontal bar
+            with Container(id="tui-header"):
+                yield Static(">_", id="header-prompt")
+                # The Tabs widget from TabbedContent is hidden (height:0);
+                # these Buttons mirror the mockup's tab bar visually + are clickable
+                yield Button("Dashboard", id="tab-dash", classes="header-tab")
+                yield Button("Run_Attack", id="tab-run", classes="header-tab")
+                yield Button("Results", id="tab-res", classes="header-tab")
+                yield Button("Settings", id="tab-set", classes="header-tab")
+                yield Static("certifyai-tui // v1.0.4", id="header-version")
+            # TabbedContent for automatic content switching (its Tabs are hidden)
+            with TabbedContent(initial="dashboard"):
+                with TabPane("DASHBOARD", id="dashboard"):
+                    yield DashboardContent()
+                with TabPane("RUN_ATTACK", id="run"):
+                    yield RunAttackContent()
+                with TabPane("RESULTS", id="results"):
+                    yield ResultsContent()
+                with TabPane("SETTINGS", id="settings"):
+                    yield SettingsContent()
+        # Footer hotkey bar (outside the outer frame to avoid border overlap)
         yield Footer()
 
     async def on_mount(self) -> None:
+        # Mark initial tab as active visually
+        with contextlib.suppress(Exception):
+            self.query_one("#tab-dash", Button).add_class("active-tab")
         try:
             await self.db_manager.initialize()
         except Exception as exc:
@@ -1067,10 +1097,36 @@ class CertifyAIApp(App):
     async def on_unmount(self) -> None:
         await self.db_manager.close()
 
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle header tab clicks to switch views."""
+        tab_ids = {"tab-dash", "tab-run", "tab-res", "tab-set"}
+        if event.button.id in tab_ids:
+            tab_map = {
+                "tab-dash": "dashboard",
+                "tab-run": "run",
+                "tab-res": "results",
+                "tab-set": "settings",
+            }
+            self.action_switch_tab(tab_map[event.button.id])
+            event.stop()
+
     def action_switch_tab(self, tab: str) -> None:
-        """Switch to a named tab."""
+        """Switch to a named tab and update active visual."""
         tc = self.query_one(TabbedContent)
         tc.active = tab
+
+        # Update header tab active class
+        tab_id_map = {
+            "dashboard": "tab-dash",
+            "run": "tab-run",
+            "results": "tab-res",
+            "settings": "tab-set",
+        }
+        for btn_id in tab_id_map.values():
+            with contextlib.suppress(Exception):
+                self.query_one(f"#{btn_id}", Button).remove_class("active-tab")
+        active_id = tab_id_map[tab]
+        self.query_one(f"#{active_id}", Button).add_class("active-tab")
 
 
 def run() -> None:
