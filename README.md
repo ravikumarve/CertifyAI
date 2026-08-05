@@ -2,6 +2,12 @@
 
 **Continuous compliance engine for AI runtimes.** Test LLM endpoints against prompt injection, jailbreaking, PII leakage, policy violation, hallucination, and bias — with audit-ready evidence mapped to EU AI Act, SOC 2 Type II, and NIST AI RMF.
 
+<p align="center">
+  <img src="https://img.shields.io/github/stars/ravikumarve/CertifyAI?style=social" />
+  <img src="https://img.shields.io/github/license/ravikumarve/CertifyAI" />
+  <img src="https://img.shields.io/badge/status-active-brightgreen" />
+</p>
+
 Self-hosted. No subscription. No cloud dependency. Bring your own LLM API key.
 
 ## Status
@@ -114,5 +120,9 @@ pytest tests/ -v -m integration --run-integration
 
 - Free tier: Apache 2.0
 - Pro/Enterprise: Commercial license (see [`docs/commercial-license.md`](./docs/commercial-license.md))
+
+## 🛒 Support the Project
+
+Star the repo, share it, or grab the Pro tier: [Buy on Gumroad](https://gumroad.com/ravikumarve)
 
 Built with Python 3.11+ | LiteLLM | SQLAlchemy 2.0 | Click | Rich | Textual | Next.js (upcoming)
