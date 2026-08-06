@@ -123,6 +123,6 @@ pytest tests/ -v -m integration --run-integration
 
 ## 🛒 Support the Project
 
-Star the repo, share it, or grab the Pro tier: [Buy on Gumroad](https://gumroad.com/ravikumarve)
+Star the repo, share it, or grab the Pro tier: [Buy on Gumroad](https://ravikumarve.gumroad.com)
 
 Built with Python 3.11+ | LiteLLM | SQLAlchemy 2.0 | Click | Rich | Textual | Next.js (upcoming)
