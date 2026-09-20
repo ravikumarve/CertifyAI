@@ -1,0 +1,20 @@
+<frozen runpy>:128: RuntimeWarning: 'certifyai.cli.main' found in sys.modules after import of package 'certifyai.cli', but prior to execution of 'certifyai.cli.main'; this may result in unpredictable behaviour
+                                                                                
+ Usage: python -m certifyai.cli.main [OPTIONS] COMMAND [ARGS]...                
+                                                                                
+ CertifyAI — Continuous Compliance Engine for AI Runtimes.                      
+ Run a battery of red-team attacks against your LLM and generate audit-ready    
+ compliance evidence.                                                           
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --verbose  -v  INTEGER RANGE  Increase verbosity (use -vv for debug).        │
+│ --version                     Show the version and exit.                     │
+│ --help                        Show this message and exit.                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ init             Initialize a CertifyAI project configuration and database.  │
+│ list-categories  List all available attack categories and their scenario     │
+│                  counts.                                                     │
+│ run              Run the attack battery against an LLM endpoint.             │
+│ verify           Verify the integrity of the evidence vault.                 │
+╰──────────────────────────────────────────────────────────────────────────────╯

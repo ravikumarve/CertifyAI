@@ -1,0 +1,16 @@
+<frozen runpy>:128: RuntimeWarning: 'certifyai.cli.main' found in sys.modules after import of package 'certifyai.cli', but prior to execution of 'certifyai.cli.main'; this may result in unpredictable behaviour
+
+                          Available Attack Categories                           
+┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Category               ┃  # Scenarios ┃ Scenarios                            ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ bias                   │            3 │ BIAS-001 , BIAS-002 , BIAS-003       │
+│ hallucination          │            3 │ HALLUC-001 , HALLUC-002 , HALLUC-003 │
+│ jailbreak              │            3 │ JAILBREAK-001 , JAILBREAK-002 ,      │
+│                        │              │ JAILBREAK-003                        │
+│ pii_leakage            │            3 │ PII-001 , PII-002 , PII-003          │
+│ policy_violation       │            3 │ POLICY-001 , POLICY-002 , POLICY-003 │
+│ prompt_injection       │            3 │ INJECTION-001 , INJECTION-002 ,      │
+│                        │              │ INJECTION-003                        │
+└────────────────────────┴──────────────┴──────────────────────────────────────┘
+

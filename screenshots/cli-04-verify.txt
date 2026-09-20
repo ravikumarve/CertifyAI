@@ -1,0 +1,23 @@
+<frozen runpy>:128: RuntimeWarning: 'certifyai.cli.main' found in sys.modules after import of package 'certifyai.cli', but prior to execution of 'certifyai.cli.main'; this may result in unpredictable behaviour
+
+ ✓ Vault integrity verified — 0 run(s) checked
+
+                Evidence Vault Verification                 
+┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Run ID       ┃ Status     ┃ Files ┃ Mismatches           ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
+│ 09781bba65f6 │ ✓          │    53 │ -                    │
+│ 11c91f76a9e1 │ ✓          │    53 │ -                    │
+│ 22a1b88064e3 │ ✓          │    53 │ -                    │
+│ 2a03c10a66b1 │ ✓          │    53 │ -                    │
+│ 2ee41d32256b │ ✓          │    53 │ -                    │
+│ 594e29f79904 │ ✓          │    53 │ -                    │
+│ 84f92522d763 │ ✓          │    53 │ -                    │
+│ aa6dfe875492 │ ✓          │    53 │ -                    │
+│ aafca4bc5071 │ ✓          │    53 │ -                    │
+│ b6f518804772 │ ✓          │    53 │ -                    │
+│ b712e5122fa8 │ ✓          │    53 │ -                    │
+│ e5be0d3ca9ac │ ✓          │    53 │ -                    │
+│ e8e14b4ca107 │ ✓          │    53 │ -                    │
+└──────────────┴────────────┴───────┴──────────────────────┘
+

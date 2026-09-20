@@ -1,0 +1,15 @@
+# CertifyAI sdist manifest — ship the license + buyer-facing docs, never secrets.
+include LICENSE
+include .env.example
+include README.md
+include certifyai.yaml
+recursive-include docs *.md
+recursive-include screenshots *.md *.txt
+global-exclude .env
+global-exclude *.db *.db-wal *.db-shm *.db.bak
+global-exclude __pycache__ *.py[cod]
+prune certifyai_vault
+prune certifyai/web/node_modules
+prune certifyai/web/.next
+prune node_modules
+prune .venv
