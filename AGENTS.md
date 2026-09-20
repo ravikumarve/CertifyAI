@@ -92,14 +92,14 @@ visually confirmed the new SVG is actually correct.
 
 ## 💾 Session Memory Ledger
 
-### [2026-09-20 18:58] — Pre-Sale Fix Pack #1: LICENSE + Email + Deps + dist/ (SALE UNBLOCKED on packaging)
-- **State:** Success — all 4 CertifyAI sale blockers from 2026-09-20 audit fixed. No commits (user stages/reviews). WIP web/tui files untouched.
+### [2026-09-20 18:58] — Pre-Sale Fix Pack #1: LICENSE + Email + Deps + dist/ (PUSHED 8dbb43f)
+- **State:** Success — all 4 CertifyAI sale blockers from 2026-09-20 audit fixed, committed, rebased onto origin/main (picked up remote bac129e badges + 4deea4f Gumroad URL), pushed. WIP web/tui files untouched (still uncommitted).
 - **MCP Data Used:** tree recon (prior session), code_tree check_errors (1688 TSX hits = parser noise, Python clean), grep import-audit, `python -m build` (isolated setuptools 84), fresh-venv buyer-path install
 - **Agents Deployed:** Orchestrator (direct execution — no sub-agents, Latitude Protocol)
 - **Architectural Decision:** (1) LICENSE = full Apache-2.0 + CertifyAI tier appendix (Free Apache / Pro $149 + Enterprise $499 via docs/commercial-license.md, contact ravi@certifyai.dev). (2) Wheel = Python engine only: `exclude=["certifyai.web*"]` (Next.js node_modules once smuggled flatted.py into wheel; verified discovery yields 0 web pkgs on setuptools 84; the 2 web/lib/*.py helpers still ride along in sdist/wheel as plain source — harmless, nothing imports them). (3) Added missing `rich-click>=1.0` to install_requires (CLI crashed on fresh install without it — caught via buyer-path smoke). (4) Removed bogus `web=["nextjs"]` extra (no such PyPI package). (5) MANIFEST.in ships LICENSE/.env.example/docs, prunes node_modules/.next/vault, global-excludes .env/*.db. (6) `.env.example` created with placeholders — real NVIDIA key in `.env` NEVER committed, never in dist (verified).
 - **Key Outputs:** LICENSE, .env.example, MANIFEST.in (new); pyproject.toml (email ravi@example.com→ravi@certifyai.dev, +rich-click, -web extra, find.exclude); dist/certifyai-0.1.0-py3-none-any.whl (63K, 35 files) + .tar.gz (382K). Gates: compile clean, 86 tests collect (integration_llm needs optional litellm), fresh-venv `certifyai --help/--version/list-categories/verify --help` all PASS (6 cats × 3 scenarios), LICENSE in dist-info, Author-email correct. Smoke venv removed (disk 81% amber watch).
 - **Build Status:** `python -m build` green; `pip install dist/*.whl` in fresh venv green; full pytest NOT run (tree has 10 pre-existing WIP modifications, last green 86/86 on 07-30 per ledger)
-- **Next Turn Directive:** User reviews `git diff pyproject.toml` + new files, then: `git add LICENSE .env.example MANIFEST.in pyproject.toml screenshots/ && git commit -m "chore(sale): Apache LICENSE, sale packaging, rich-click dep"`. Remaining pre-sale items: screenshots/ still untracked (21 files), 10 WIP files uncommitted, Gumroad listing copy exists (docs/gumroad-listing.md 312L) — then verifier score gate 70/100.
+- **Next Turn Directive:** Commit 8dbb43f is live on origin/main. Remaining pre-sale items: 10 WIP files uncommitted (Phase 5 web/tui work), Gumroad listing copy exists (docs/gumroad-listing.md 312L) — then verifier score gate 70/100. Next fix pack candidate: Vajra (PRODUCT.md __FILL ME__, 0 shots, no .env.example) or Kuber (0 shots).
 
 ### [2026-07-30 14:30] — Windowed-Terminal Frame + Single-Row Header (Mockup Match)
 - **State:** Success — 86/86 tests passing, pushed `d1fe7d5`
