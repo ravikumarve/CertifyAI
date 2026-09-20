@@ -8,6 +8,7 @@ export interface DashboardData {
     all_time_total: number;
     running_time_secs: number;
     last_run_id: string | null;
+    last_run_created_at: string | null;
     provider: string;
     model: string;
     frameworks: string[];

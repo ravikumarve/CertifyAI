@@ -157,6 +157,7 @@ def _dashboard(cursor) -> dict:
             "all_time_total": aggr["total_attacks"] if aggr else 0,
             "running_time_secs": elapsed,
             "last_run_id": latest["id"] if latest else None,
+            "last_run_created_at": latest["created_at"] if latest else None,
             "provider": provider_name,
             "model": model_name,
             "frameworks": frameworks_list,

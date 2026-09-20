@@ -111,11 +111,23 @@ class DashboardContent(Vertical):
 
     def compose(self) -> ComposeResult:
         with Container(id="dash-cards"):
-            yield Static("Loading…", id="dash-last-run", classes="dash-card")
-            yield Static("Loading…", id="dash-totals", classes="dash-card")
-            yield Static("Loading…", id="dash-score", classes="dash-card")
-            yield Static("Loading…", id="dash-vault", classes="dash-card")
-        yield Static("Recent Runs", classes="section-title")
+            with Vertical(classes="dash-card"):
+                yield Static("Last Run", classes="dc-label")
+                yield Static("—", id="dash-last-run", classes="dc-value fg-blue")
+                yield Static("No runs yet", id="dash-last-date", classes="dc-sub")
+            with Vertical(classes="dash-card"):
+                yield Static("Attacks", classes="dc-label")
+                yield Static("0", id="dash-totals", classes="dc-value")
+                yield Static("6 categories // 18 scenarios", id="dash-totals-desc", classes="dc-sub")
+            with Vertical(classes="dash-card"):
+                yield Static("Last Score", classes="dc-label")
+                yield Static("—", id="dash-score", classes="dc-value fg-red")
+                yield Static("— passed // — failed", id="dash-score-desc", classes="dc-sub")
+            with Vertical(classes="dash-card"):
+                yield Static("Vault", classes="dc-label")
+                yield Static("—", id="dash-vault", classes="dc-value fg-green")
+                yield Static("SHA-256 chain intact", id="dash-vault-desc", classes="dc-sub")
+        yield Static("RECENT RUNS", classes="section-title")
         yield LoadingIndicator(id="dash-loading")
         yield DataTable(id="dash-runs-table")
         yield Static("", id="dash-error", classes="error-text")
@@ -152,32 +164,41 @@ class DashboardContent(Vertical):
             loading.display = False
 
     def _update_status_cards(self, stats: dict[str, Any], last_run: RunRecord | None) -> None:
-        self.query_one("#dash-last-run", Static).update(
-            f"[bold]Last Run[/bold]\n{'Never' if last_run is None else last_run.started_at[:19]}"
-        )
+        # Card 1: Last Run
+        if last_run is not None:
+            self.query_one("#dash-last-run", Static).update(f"{last_run.id[:8]}")
+            self.query_one("#dash-last-date", Static).update(
+                last_run.started_at[:19] if last_run.started_at else "No date"
+            )
+        else:
+            self.query_one("#dash-last-run", Static).update("—")
+            self.query_one("#dash-last-date", Static).update("No runs yet")
 
+        # Card 2: Attacks
         t = stats["total_attacks"]
-        p = stats["total_passed"]
-        f = stats["total_failed"]
-        e = stats["total_errors"]
-        self.query_one("#dash-totals", Static).update(
-            f"[bold]Attacks[/bold]\n"
-            f"Total: {t}  [green]Pass: {p}[/green]  "
-            f"[red]Fail: {f}[/red]  [yellow]Err: {e}[/yellow]"
-        )
+        self.query_one("#dash-totals", Static).update(f"{t}")
 
+        # Card 3: Last Score
         if last_run is not None:
             score = last_run.overall_score
             score_str = f"{score:.0%}" if score is not None else "N/A"
-            status_color = "green" if last_run.status == "completed" else "red"
-            self.query_one("#dash-score", Static).update(
-                f"[bold]Last Score[/bold]\n"
-                f"[{status_color}]{last_run.status.upper()}[/{status_color}]  "
-                f"Score: {score_str}"
+            score_widget = self.query_one("#dash-score", Static)
+            score_widget.update(score_str)
+            # Color-coded: red for low, green for high
+            if score is not None and score >= 0.7:
+                score_widget.remove_class("fg-red")
+                score_widget.add_class("fg-green")
+            else:
+                score_widget.remove_class("fg-green")
+                score_widget.add_class("fg-red")
+            self.query_one("#dash-score-desc", Static).update(
+                f"{last_run.passed} passed // {last_run.failed} failed"
             )
         else:
-            self.query_one("#dash-score", Static).update("[bold]Last Score[/bold]\nNo runs yet")
+            self.query_one("#dash-score", Static).update("—")
+            self.query_one("#dash-score-desc", Static).update("No runs yet")
 
+        # Card 4: Vault
         vault_dir = self._get_app().vault_path
         if vault_dir.exists():
             vault = EvidenceVault(vault_dir)
@@ -185,9 +206,7 @@ class DashboardContent(Vertical):
             integrity = "VERIFIED" if v_result["verified"] else "TAMPERED"
         else:
             integrity = "Not found"
-        self.query_one("#dash-vault", Static).update(
-            f"[bold]Vault[/bold]\nRuns: {stats['total_runs']}  Integrity: {integrity}"
-        )
+        self.query_one("#dash-vault", Static).update(integrity)
 
     def _update_runs_table(self, runs: list[RunRecord]) -> None:
         table = self.query_one("#dash-runs-table", DataTable)
@@ -458,7 +477,7 @@ class ResultsContent(Vertical):
     """Results tab — historical runs table and per-run detail."""
 
     def compose(self) -> ComposeResult:
-        yield Static("Historical Runs", classes="section-title")
+        yield Static("HISTORICAL RUNS", classes="section-title")
         yield LoadingIndicator(id="results-loading")
         yield DataTable(id="results-runs-table")
         yield Static("", id="results-detail-title", classes="section-title")
@@ -565,21 +584,27 @@ class SettingsContent(Vertical):
     """Settings tab — configure provider, paths, frameworks."""
 
     def compose(self) -> ComposeResult:
-        yield Static("Provider Configuration", classes="section-title")
+        yield Static("PROVIDER CONFIGURATION", classes="section-title")
         yield Label("Provider (openai / anthropic / ollama)")
         yield Input(id="cfg-provider", placeholder="openai")
-        yield Label("Model (e.g. gpt-4o, claude-4, llama3.1)")
-        yield Input(id="cfg-model", placeholder="gpt-4o")
-        yield Label("API Key")
-        yield Input(id="cfg-api-key", placeholder="sk-...", password=True)
+        with Container(id="settings-field-row"):
+            with Vertical():
+                yield Label("Model (e.g. gpt-4o, claude-4, llama3.1)")
+                yield Input(id="cfg-model", placeholder="gpt-4o")
+            with Vertical():
+                yield Label("API Key")
+                yield Input(id="cfg-api-key", placeholder="sk-...", password=True)
 
-        yield Static("Paths", classes="section-title")
-        yield Label("Vault Directory")
-        yield Input(id="cfg-vault-path", placeholder=str(DEFAULT_VAULT_PATH))
-        yield Label("Database Path")
-        yield Input(id="cfg-db-path", placeholder=DEFAULT_DB_PATH)
+        yield Static("PATHS", classes="section-title")
+        with Container(id="settings-field-row-paths", classes="field-row"):
+            with Vertical():
+                yield Label("Vault Directory")
+                yield Input(id="cfg-vault-path", placeholder=str(DEFAULT_VAULT_PATH))
+            with Vertical():
+                yield Label("Database Path")
+                yield Input(id="cfg-db-path", placeholder=DEFAULT_DB_PATH)
 
-        yield Static("Compliance Framework", classes="section-title")
+        yield Static("COMPLIANCE FRAMEWORK", classes="section-title")
         yield Select(
             id="cfg-framework",
             options=[
@@ -591,7 +616,8 @@ class SettingsContent(Vertical):
             value="all",
         )
 
-        yield Button("Save Configuration", id="cfg-save", variant="primary")
+        with Horizontal(id="run-buttons"):
+            yield Button("[ SAVE_CONFIGURATION ]", id="cfg-save", variant="primary")
         yield Static("", id="cfg-status", classes="status-text")
 
     def on_mount(self) -> None:
@@ -681,30 +707,114 @@ class CertifyAIApp(App):
         layout: vertical;
     }
 
-    /* Force auto-height for containers — prevents headless/take_svg_screenshot
-       from computing 1fr height that collapses parent layout (Textual #5397) */
-    Container, Vertical {
-        height: auto;
-    }
-
     /* ── Theme Variables ── */
     $primary: #D4FF00;
     $secondary: #00E5FF;
     $error: #FF0055;
     $surface: #090909;
     $panel: #121212;
-    $boost: #222222;
+    $border: #222222;
+    $border-focus: #444444;
     $text: #FFFFFF;
     $text-muted: #888888;
-    $border: #222222;
+    $text-faint: #444444;
 
-    /* ── Typography ── */
+    /* Force auto-height for containers — allows TabPane to size to its content,
+       so TabbedContent (overflow-y: auto) can scroll long pages like Settings */
+    Container, Vertical {
+        height: auto;
+    }
+
+    /* ── Outer Frame (windowed terminal with 2px border like mockup) ── */
+
+    #outer-frame {
+        border: heavy #444444;
+        margin: 1 2;
+        background: #000000;
+        height: 1fr;
+    }
+
+    /* ── TUI Header (prompt + tabs + version — single row, 2px bottom border) ── */
+
+    #tui-header {
+        background: #090909;
+        border-bottom: heavy #444444;
+        height: 3;
+        layout: horizontal;
+    }
+
+    #header-prompt {
+        background: #121212;
+        color: #D4FF00;
+        text-style: bold;
+        width: 5;
+        text-align: center;
+        padding: 0 1;
+        border-right: heavy #444444;
+    }
+
+    #header-version {
+        color: #444444;
+        text-style: bold;
+        width: 1fr;
+        text-align: right;
+        padding: 0 2;
+    }
+
+    /* Header tab buttons — styled like mockup tabs (no button chrome) */
+    Button.header-tab {
+        background: #090909;
+        color: #888888;
+        border: none;
+        border-right: heavy #444444;
+        height: 3;
+        padding: 0 2;
+        text-style: bold;
+        min-width: 0;
+        margin: 0;
+    }
+
+    Button.header-tab:hover {
+        background: #121212;
+        color: #FFFFFF;
+    }
+
+    Button.header-tab.active-tab {
+        background: #000000;
+        color: #FFFFFF;
+        border: none;
+        border-bottom: heavy #D4FF00;
+        border-right: heavy #444444;
+    }
+
+    /* ── Hide TabbedContent's own Tabs (we use custom header buttons) ── */
+
+    TabbedContent {
+        background: #000000;
+        overflow-y: auto;
+    }
+
+    TabPane {
+        background: #000000;
+        padding: 2 2;
+    }
+
+    Tabs {
+        height: 0;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    /* ── Section Labels (acid green, underlined, like mockup) ── */
 
     .section-title {
         text-style: bold;
-        padding: 1 0 0 1;
+        padding: 0 0 1 0;
         color: #D4FF00;
-        border-bottom: solid #444444;
+        border-bottom: heavy #222222;
+        margin: 1 0;
     }
 
     .error-text {
@@ -723,128 +833,48 @@ class CertifyAIApp(App):
         background: #121212;
     }
 
-    /* ── Outer Frame (windowed terminal sitting on black screen) ── */
-
-    #outer-frame {
-        border: heavy #444444;
-        margin: 1 2;
-        background: #000000;
-        height: 1fr;
-    }
-
-    /* ── TUI Header (prompt + tab labels + version — single row) ── */
-
-    #tui-header {
-        background: #090909;
-        border-bottom: solid #444444;
-        height: 2;
-        layout: horizontal;
-    }
-
-    #header-prompt {
-        background: #121212;
-        color: #D4FF00;
-        text-style: bold;
-        width: 4;
-        text-align: center;
-        border-right: solid #444444;
-        /* no padding — content is just ">_" */
-    }
-
-    #header-version {
-        color: #444444;
-        text-style: bold;
-        width: 1fr;
-        text-align: right;
-        padding: 0 2;
-    }
-
-    /* Header tab buttons styled as text labels (no button chrome) */
-    Button.header-tab {
-        background: #090909;
-        color: #888888;
-        border: none;
-        border-right: solid #444444;
-        height: 2;
-        padding: 0 2;
-        text-style: bold;
-        min-width: 0;
-        margin: 0;
-    }
-
-    Button.header-tab:hover {
-        background: #121212;
-        color: #FFFFFF;
-    }
-
-    Button.header-tab.active-tab {
-        background: #000000;
-        color: #FFFFFF;
-        border: none;
-        border-bottom: solid #D4FF00;
-        border-right: solid #444444;
-    }
-
-    /* ── Hide TabbedContent's own Tabs (we use custom header) ── */
-
-    TabbedContent {
-        background: #000000;
-    }
-
-    TabPane {
-        background: #000000;
-    }
-
-    Tabs {
-        height: 0;
-        overflow: hidden;
-        margin: 0;
-        padding: 0;
-        border: none;
-    }
-
-    /* ── Tab Content ── */
-
-    Vertical {
-        padding: 0 1;
-    }
-
-    /* ── Dashboard Cards ── */
+    /* ── Dashboard Cards (2x2 grid with label/value/sub) ── */
 
     #dash-cards {
         layout: grid;
         grid-size: 2 2;
-        grid-gutter: 1;
+        grid-gutter: 2;
         height: auto;
-        padding: 1;
     }
 
     .dash-card {
-        height: 5;
-        border: solid #222222;
+        height: 7;
+        border: heavy #444444;
         background: #090909;
-        padding: 1;
+        padding: 1 2;
     }
 
-    .dash-card:hover {
-        border: solid #444444;
-        background: #121212;
+    .dc-label {
+        color: #888888;
+        text-style: bold;
+        padding: 0 0 1 0;
+    }
+
+    .dc-value {
+        text-style: bold;
+        color: #FFFFFF;
+    }
+
+    .dc-value.fg-blue { color: #00E5FF; }
+    .dc-value.fg-green { color: #D4FF00; }
+    .dc-value.fg-red { color: #FF0055; }
+
+    .dc-sub {
+        color: #444444;
+        padding: 1 0 0 0;
     }
 
     #dash-runs-table {
-        height: 12;
-    }
-
-    /* ── Run Attack Panel ── */
-
-    #run-config-panel {
-        border: solid #D4FF00;
-        border-title-color: #D4FF00;
-        border-title-style: bold;
-        background: #090909;
-        padding: 1;
+        height: 14;
         margin: 1 0;
     }
+
+    /* ── Attack Info Grid (PROVIDER / MODEL / CONCURRENCY) ── */
 
     #run-cfg-row {
         layout: horizontal;
@@ -858,28 +888,18 @@ class CertifyAIApp(App):
         text-style: bold;
     }
 
-    #run-buttons {
-        padding: 1 0;
-        height: auto;
-    }
+    /* ── Run Attack Panel (border: solid #D4FF00 with title) ── */
 
-    #run-buttons Button {
-        width: 22;
-        margin: 0 1 0 0;
-    }
-
-    #run-halt {
+    #run-config-panel {
+        border: heavy #D4FF00;
+        border-title-color: #D4FF00;
+        border-title-style: bold;
         background: #090909;
-        color: #FF0055;
-        border: solid #FF0055;
-        text-style: bold;
-        dock: right;
+        padding: 2;
+        margin: 1 0;
     }
 
-    #run-halt:hover {
-        background: #FF0055;
-        color: #000000;
-    }
+    /* ── TUI Buttons (match mockup with box-shadow effect) ── */
 
     Button {
         height: 3;
@@ -905,11 +925,34 @@ class CertifyAIApp(App):
         color: #000000;
     }
 
-    /* ── Progress Row ── */
+    #run-buttons {
+        padding: 1 0;
+        height: auto;
+    }
+
+    #run-buttons Button {
+        width: 24;
+        margin: 0 1 0 0;
+    }
+
+    #run-halt {
+        background: #090909;
+        color: #FF0055;
+        border: solid #FF0055;
+        text-style: bold;
+        dock: right;
+    }
+
+    #run-halt:hover {
+        background: #FF0055;
+        color: #000000;
+    }
+
+    /* ── Progress Row (match mockup) ── */
 
     #run-progress-row {
         height: 3;
-        margin: 0;
+        margin: 1 0 0 0;
     }
 
     #run-progress-pct {
@@ -948,17 +991,19 @@ class CertifyAIApp(App):
         margin: 1 0;
     }
 
-    /* ── Results Tab ── */
+    /* ── Results Tab Tables ── */
 
     #results-runs-table {
         height: 14;
+        margin: 1 0;
     }
 
     #results-detail-table {
         height: 10;
+        margin: 1 0;
     }
 
-    /* ── Settings Tab ── */
+    /* ── Settings Tab (match mockup form layout) ── */
 
     SettingsContent Input, SettingsContent Select {
         margin: 0 1 0 1;
@@ -977,6 +1022,14 @@ class CertifyAIApp(App):
     SettingsContent Label {
         padding: 1 1 0 1;
         color: #888888;
+    }
+
+    #settings-field-row, .field-row {
+        layout: grid;
+        grid-size: 2;
+        grid-gutter: 2;
+        height: auto;
+        padding: 0 1;
     }
 
     #cfg-save {
@@ -1005,17 +1058,20 @@ class CertifyAIApp(App):
         background: #1a1a1a;
     }
 
-    /* ── Footer ── */
+    /* ── Footer (hotkey bar, inside terminal window boundary, 2px top border) ── */
 
     Footer {
         background: #121212;
         color: #888888;
-        border-top: solid #444444;
+        border-top: heavy #444444;
+        text-style: bold;
+        height: 3;
     }
 
     Footer > .footer--key {
         background: #000000;
         color: #D4FF00;
+        text-style: bold;
         border: solid #222222;
     }
 

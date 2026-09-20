@@ -20,7 +20,9 @@
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+@layer base {
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+}
 
 body {
   background-color: var(--bg-void);
@@ -61,6 +63,13 @@ body {
 .status-pass { color: var(--acid-green); font-weight: 700; text-transform: uppercase; }
 .status-fail { color: var(--electric-red); font-weight: 700; text-transform: uppercase; }
 .status-run { color: var(--cyber-blue); font-weight: 700; text-transform: uppercase; animation: blink 1s infinite; }
+.status-txt { font-family: var(--font-mono); text-transform: uppercase; }
+
+/* ── Score Text (Recent Runs table — mirrors scoreColor() thresholds) ── */
+.txt-muted { color: var(--text-muted); }
+.txt-pass { color: var(--acid-green); font-weight: 700; }
+.txt-amber { color: var(--amber, #FFB800); font-weight: 700; }
+.txt-fail { color: var(--electric-red); font-weight: 700; }
 
 @keyframes blink { 50% { opacity: 0.3; } }
 

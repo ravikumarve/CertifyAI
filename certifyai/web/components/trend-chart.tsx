@@ -88,18 +88,18 @@ export default function TrendChart() {
           <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: -8 }}>
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="var(--border-hard)"
+              stroke="#222222"
               vertical={false}
             />
             <XAxis
               dataKey="time"
-              tick={{ fill: "var(--text-faint)", fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}
-              axisLine={{ stroke: "var(--border-hard)" }}
+              tick={{ fill: "#444444", fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}
+              axisLine={{ stroke: "#222222" }}
               tickLine={false}
             />
             <YAxis
               domain={[0, 100]}
-              tick={{ fill: "var(--text-faint)", fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}
+              tick={{ fill: "#444444", fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(v: number) => `${v}%`}
@@ -107,14 +107,14 @@ export default function TrendChart() {
             />
             <Tooltip
               contentStyle={{
-                background: "var(--bg-panel)",
-                border: "1px solid var(--border-hard)",
+                background: "#121212",
+                border: "1px solid #222222",
                 borderRadius: 0,
                 fontSize: 12,
                 fontFamily: "JetBrains Mono, monospace",
-                color: "var(--text-main)",
+                color: "#FFFFFF",
               }}
-              labelStyle={{ color: "var(--text-muted)", marginBottom: 4 }}
+              labelStyle={{ color: "#888888", marginBottom: 4 }}
               formatter={(value, name) => {
                 if (name === "score" && typeof value === "number") return [`${value}%`, "Score"];
                 return [value ?? "—", name];
@@ -123,11 +123,11 @@ export default function TrendChart() {
             <Line
               type="linear"
               dataKey="score"
-              stroke="var(--acid-green)"
+              stroke="#D4FF00"
               strokeWidth={2}
               strokeLinejoin="round"
-              dot={{ fill: "var(--acid-green)", strokeWidth: 0, r: 3 }}
-              activeDot={{ fill: "var(--acid-green)", stroke: "var(--bg-void)", strokeWidth: 2, r: 5 }}
+              dot={{ fill: "#D4FF00", strokeWidth: 0, r: 3 }}
+              activeDot={{ fill: "#D4FF00", stroke: "#000000", strokeWidth: 2, r: 5 }}
               connectNulls={false}
             />
           </LineChart>

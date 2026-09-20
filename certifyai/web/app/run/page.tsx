@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import AttackTable from "@/components/attack-table";
 import VaultLog from "@/components/vault-log";
+import StatsCards from "@/components/stats-cards";
 import type { DashboardData } from "@/lib/types";
 
 export default function RunAttackPage() {
@@ -31,10 +32,13 @@ export default function RunAttackPage() {
 
   const stats = data?.stats;
   const isRunning = data?.current_run?.status === "running";
+  const runningTime = stats?.running_time_secs
+    ? `${Math.floor(stats.running_time_secs / 60)}:${String(stats.running_time_secs % 60).padStart(2, "0")}`
+    : "—";
 
   return (
     <>
-      {/* Top Bar */}
+      {/* Top Bar — with Dry Run + Halt Attack buttons */}
       <div className="flex justify-between items-end pb-6 border-b border-[var(--border-hard)]">
         <div>
           <div className="font-[family-name:var(--font-mono)] text-[1.5rem] font-bold uppercase tracking-tight">
@@ -44,12 +48,14 @@ export default function RunAttackPage() {
             Target: {stats?.provider ?? "—"} / {stats?.model ?? "—"}
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
           {error && (
-            <div className="text-[var(--electric-red)] text-[0.75rem] font-[family-name:var(--font-mono)]">
+            <span className="text-[var(--electric-red)] text-[0.75rem] font-[family-name:var(--font-mono)]">
               DB: {error}
-            </div>
+            </span>
           )}
+          <button className="brut-btn">Dry Run</button>
+          <button className="brut-btn brut-btn-danger">Halt Attack</button>
         </div>
       </div>
 
@@ -58,17 +64,28 @@ export default function RunAttackPage() {
           Loading attack view...
         </div>
       ) : (
-        <div className="grid grid-cols-[2fr_1fr] gap-4 flex-1 min-h-0">
-          <AttackTable
-            results={data?.recent_results ?? []}
-            frameworks={data?.current_run?.frameworks ?? stats?.frameworks ?? []}
-            concurrency={data?.current_run?.concurrency}
-            isRunning={isRunning}
-            completedCount={data?.recent_results?.length ?? 0}
-            totalCount={stats?.total ?? 0}
+        <>
+          {/* ── 4 Stats Cards (matching mockup Run Attack page) ── */}
+          <StatsCards
+            score={stats?.score ?? null}
+            passed={stats?.passed ?? 0}
+            failed={stats?.failed ?? 0}
+            runningTime={runningTime}
           />
-          <VaultLog entries={data?.vault_log ?? []} />
-        </div>
+
+          {/* ── Main Grid: Attack Table + Vault Log ── */}
+          <div className="grid grid-cols-[2fr_1fr] gap-4 flex-1 min-h-0">
+            <AttackTable
+              results={data?.recent_results ?? []}
+              frameworks={data?.current_run?.frameworks ?? stats?.frameworks ?? []}
+              concurrency={data?.current_run?.concurrency}
+              isRunning={isRunning}
+              completedCount={data?.recent_results?.length ?? 0}
+              totalCount={stats?.total ?? 0}
+            />
+            <VaultLog entries={data?.vault_log ?? []} />
+          </div>
+        </>
       )}
     </>
   );
