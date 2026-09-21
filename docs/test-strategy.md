@@ -2679,7 +2679,7 @@ echo "✅ E2E fixture DB created at $DB_PATH"
 [llm]
 provider = "openai"
 model = "gpt-4o"
-api_key = "sk-test-fixture-key"
+api_key = "sk-test"
 
 [compliance]
 frameworks = ["test_eu_ai_act", "test_soc2"]

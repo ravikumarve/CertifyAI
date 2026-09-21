@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs";
@@ -7,11 +7,16 @@ import fs from "fs";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+// Allowlisted dashboard query modes (db_query.py accepts exactly these).
+// Never pass raw query params to a subprocess — argv array, no shell.
+const ALLOWED_MODES = new Set(["dashboard", "runs", "config"]);
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const mode = searchParams.get("mode") || "dashboard";
+  const requestedMode = searchParams.get("mode") || "dashboard";
+  const mode = ALLOWED_MODES.has(requestedMode) ? requestedMode : "dashboard";
 
   const dbScript = path.join(process.cwd(), "lib", "db_query.py");
   const dbPath = path.join(process.cwd(), "..", "..", "certifyai.db");
@@ -28,8 +33,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { stdout, stderr } = await execAsync(
-      `python3 "${dbScript}" "${dbPath}" ${mode}`,
+    const { stdout, stderr } = await execFileAsync(
+      "python3",
+      [dbScript, dbPath, mode],
       { timeout: 15000 }
     );
 

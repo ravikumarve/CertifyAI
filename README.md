@@ -49,7 +49,7 @@ python -m certifyai.cli.main list-categories
 python -m certifyai.cli.main run --dry-run
 
 # Run against a real LLM (set your API key)
-export CERTIFYAI_API_KEY="your-api-key"
+export CERTIFYAI_API_KEY='<your-key-here>'
 python -m certifyai.cli.main run --provider openai --model gpt-4o
 
 # Launch the terminal dashboard

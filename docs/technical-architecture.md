@@ -1189,7 +1189,7 @@ Browser ──► Next.js Server ──► better-sqlite3 ──► certifyai.db
 
 **Read vs Write distinction:**
 - **Reads:** Dashboard reads freely via `better-sqlite3`. No issues. WAL mode guarantees consistent snapshots.
-- **Writes:** Dashboard writes to `config` table directly via `better-sqlite3`. For triggering a new run, Dashboard spawns a CLI subprocess (`child_process.exec("certifyai run")`) — not a direct Engine call. This keeps the Engine in a separate process and prevents blocking the Next.js event loop.
+- **Writes:** Dashboard writes to `config` table directly via `better-sqlite3`. For triggering a new run, Dashboard spawns a CLI subprocess via argv array — not a direct Engine call. This keeps the Engine in a separate process and prevents blocking the Next.js event loop.
 
 **Rejected alternative — FastAPI backend:**
 Building a FastAPI server between SQLite and Next.js would add ~500 lines of endpoint code, a new deployment artifact, and a network hop. The only benefit (multi-machine deployment) is irrelevant for a single-user boilerplate.

@@ -1741,7 +1741,7 @@ All three interfaces operate on the same SQLite database and filesystem vault:
 | TUI and Dashboard open simultaneously | Both read same DB — no conflicts | WAL mode: each reader sees a consistent snapshot at query time |
 | Config edited in TUI while Dashboard open | Dashboard shows stale config until navigation | Config is read at page load. Navigate to /settings to see changes |
 | Two CLI runs simultaneously (unlikely) | Second run fails with clear error | `sqlite3.OperationalError: database is locked`. Error message: `Another CertifyAI process is writing to the database. Wait for it to complete.` |
-| Web Dashboard triggers run | Dashboard spawns `certifyai run` subprocess | `child_process.exec()` in Route Handler. Dashboard polls for completion via DB status. |
+| Web Dashboard triggers run | Dashboard spawns `certifyai run` subprocess | `execFile` argv array in Route Handler (no shell). Dashboard polls for completion via DB status. |
 
 **Notification mechanism:** No real-time IPC between interfaces. The shared database is the communication channel. The TUI polls `runs` table. The Dashboard relies on page navigation (Server Components re-fetch on every request).
 

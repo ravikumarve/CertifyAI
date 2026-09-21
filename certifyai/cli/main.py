@@ -585,5 +585,91 @@ def init(framework: str, provider: str, model: str, db: str) -> None:
     console.print()
 
 
+@cli.command(cls=rich_click.RichCommand, name="healthcheck")
+@click.option("--db", default="certifyai.db", help="Path to SQLite database.", show_default=True)
+@click.option("--vault", default="./certifyai_vault", help="Path to evidence vault.", show_default=True)
+def healthcheck(db: str, vault: str) -> None:
+    """Check database, vault, and config health (exit 0 = healthy).
+
+    Orchestration signal for the CLI product (`/health`-style endpoint
+    for Docker HEALTHCHECK, compose, and buyer smoke tests).
+    Missing API key / uninitialized DB are warnings (dry-run still works);
+    corrupt DB or schema mismatch is a failure (exit 1).
+    """
+    import asyncio
+    import os
+    import sys
+
+    from certifyai.engine.database.models import SCHEMA_VERSION
+
+    failures = 0
+    warnings = 0
+    rows: list[tuple[str, str, str]] = []
+
+    def _row(check: str, state: str, detail: str) -> None:
+        rows.append((check, state, detail))
+
+    # 1. API key (warning only — dry-run needs none)
+    if os.environ.get("CERTIFYAI_API_KEY"):
+        _row("API key", "ok", "CERTIFYAI_API_KEY is set")
+    else:
+        warnings += 1
+        _row("API key", "warn", "CERTIFYAI_API_KEY missing (live runs need it)")
+
+    # 2. Database open + schema version
+    async def _check_db() -> None:
+        nonlocal failures, warnings
+        db_mgr = DatabaseManager(db)
+        try:
+            await db_mgr.initialize()
+            from sqlalchemy import text
+
+            async with db_mgr.session() as s:
+                ver = (await s.execute(text("SELECT MAX(version) FROM _schema_version"))).scalar()
+                total = (await s.execute(text("SELECT COUNT(*) FROM runs"))).scalar()
+            await db_mgr.close()
+            if ver != SCHEMA_VERSION:
+                failures += 1
+                _row("Database", "fail", f"schema v{ver} != code v{SCHEMA_VERSION} (see migrations/)")
+            else:
+                _row("Database", "ok", f"open, schema v{ver}, {total} run(s)")
+        except Exception as exc:
+            failures += 1
+            _row("Database", "fail", f"cannot open {db}: {exc}")
+
+    asyncio.run(_check_db())
+
+    # 3. Vault directory (warning only — created on first run)
+    vault_path = Path(vault)
+    if vault_path.is_dir():
+        _row("Vault", "ok", f"{vault} present")
+    else:
+        warnings += 1
+        _row("Vault", "warn", f"{vault} not initialized (created on first run)")
+
+    table = Table(
+        title="CertifyAI Healthcheck",
+        title_style=f"bold {ACID_GREEN}",
+        border_style=BORDER_HARD,
+        header_style=f"bold {TEXT_MAIN} on {BG_PANEL}",
+        row_styles=["", f"on {BG_SURFACE}"],
+    )
+    table.add_column("Check", style=CYBER_BLUE)
+    table.add_column("State", width=8)
+    table.add_column("Detail", style=TEXT_MAIN)
+    for check, state, detail in rows:
+        color = ACID_GREEN if state == "ok" else "#FF6600" if state == "warn" else ELECTRIC_RED
+        table.add_row(check, Text(state.upper(), style=f"bold {color}"), detail)
+
+    console.print()
+    console.print(table)
+    console.print()
+    if failures:
+        console.print(f" [{ELECTRIC_RED}]\u2717[/] unhealthy — {failures} failure(s), {warnings} warning(s)")
+        sys.exit(1)
+    console.print(f" [{ACID_GREEN}]\u2713[/] healthy — {warnings} warning(s)")
+
+
+
 if __name__ == "__main__":
     cli()

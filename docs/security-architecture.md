@@ -170,7 +170,7 @@ Scenario: An LLM provider returns a crafted response that, when read by the Engi
 evaluation pipeline, exploits a regex ReDoS (Regular Expression Denial of Service)
 or triggers a deserialization vulnerability.
 Severity: Medium-High
-Current mitigation: Evaluation uses regex patterns. No eval() or dynamic code execution.
+Current mitigation: Evaluation uses static regex patterns. No dynamic code evaluation.
 Pydantic v2 validates AttackResult schema strictly.
 Gap: A regex with catastrophic backtracking could hang the evaluation thread for
 minutes. Mitigation: use `re.match` with timeout or switch to `regex` library
@@ -192,7 +192,7 @@ that supports timeouts. Set per-evaluation timeout.
 | **Denial of Service** | Attacker sends many concurrent requests to a route handler that spawns subprocesses | **Medium** | The "trigger run" endpoint spawns a CLI subprocess. If called 100 times, it spawns 100 processes. | No rate limiting on route handlers. A single `fetch('http://localhost:3000/api/run', {method: 'POST'})` in a loop could OOM the machine. **Mitigation: track if a run is already in progress and reject concurrent requests.** |
 | **Denial of Service** | SQLite contention blocks dashboard reads while Engine writes | **Low** | WAL mode allows concurrent reads. Engine writes are short (INSERT of results). | Under heavy load (many results), a write transaction could briefly block reads. Sub-millisecond impact. Acceptable. |
 | **Elevation of Privilege** | `better-sqlite3` vulnerability allows SQL injection | **Critical** | Dashboard uses parameterized queries via `better-sqlite3` prepared statements. | SQL injection is mitigated by design. However, if the dashboard ever constructs raw SQL strings (e.g., for dynamic filtering), injection risk returns. **Mitigation: use an ORM wrapper or query builder for any dynamic queries.** |
-| **Elevation of Privilege** | The "trigger run" route handler executes arbitrary commands | **Critical** | `child_process.exec('certifyai run')` — the command is hardcoded. No user input in the command string. | If the route handler were to accept user-controlled arguments (e.g., `--attack` from a query parameter), that would enable command injection. **Mitigation: never interpolate user input into subprocess commands.** |
+| **Elevation of Privilege** | The "trigger run" route handler executes arbitrary commands | **Critical** | `execFile` argv array — no shell, `mode` allowlisted server-side. | The dashboard route allowlists `mode` against dashboard/runs/config and passes it as an argv element (never through a shell). **Mitigation: keep it that way — never interpolate user input into shell commands.** |
 
 **Dashboard-specific attack: SSRF via malicious report link**
 ```
